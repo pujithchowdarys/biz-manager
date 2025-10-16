@@ -37,9 +37,9 @@ const SettingsPage: React.FC = () => {
                   id="api-key" 
                   value={supabaseUrl}
                   readOnly
-                  className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                  className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white"
                 />
-                <button onClick={handleCopy} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors">Copy</button>
+                <button onClick={handleCopy} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors">Copy</button>
               </div>
                <p className="text-xs text-textSecondary mt-2">
                  Your application is connected to this Supabase project. Connection details are managed in the `supabaseClient.ts` file.

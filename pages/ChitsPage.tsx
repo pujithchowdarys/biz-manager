@@ -4,17 +4,26 @@ import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
 import { supabase } from '../supabaseClient';
-import { Chit } from '../types';
+import { Chit, ChitMember } from '../types';
+import { EditIcon, TrashIcon } from '../constants';
 
 const ChitsPage: React.FC = () => {
   const [chits, setChits] = useState<Chit[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddChitModalOpen, setIsAddChitModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isLotteryModalOpen, setIsLotteryModalOpen] = useState(false);
   const [selectedChit, setSelectedChit] = useState<Chit | null>(null);
+  const [eligibleMembers, setEligibleMembers] = useState<ChitMember[]>([]);
   const [formState, setFormState] = useState<any>({});
   const [overview, setOverview] = useState({ totalCollected: 0, totalGiven: 0, totalSavings: 0 });
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const navigate = useNavigate();
+
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -118,6 +127,63 @@ const ChitsPage: React.FC = () => {
         fetchData();
     }
   };
+  
+  const handleDeleteChit = async (chitId: number) => {
+    if (window.confirm('Are you sure you want to delete this chit group? This will delete all members and transactions associated with it.')) {
+        const { data: members, error: membersError } = await supabase.from('chit_members').select('id').eq('chit_id', chitId);
+        if (membersError) { 
+            console.error(membersError);
+            showNotification(`Error fetching members: ${membersError.message}`, 'error');
+            return; 
+        }
+
+        if (members && members.length > 0) {
+            const memberIds = members.map(m => m.id);
+            await supabase.from('chit_transactions').delete().in('member_id', memberIds);
+            await supabase.from('chit_members').delete().in('id', memberIds);
+        }
+        
+        const { error: chitError } = await supabase.from('chits').delete().eq('id', chitId);
+        if (chitError) {
+            console.error(chitError);
+            showNotification(`Error deleting chit: ${chitError.message}`, 'error');
+        } else {
+            showNotification('Chit group deleted successfully!', 'success');
+            fetchData();
+        }
+    }
+  };
+
+  const handleOpenLotteryModal = async (chit: Chit) => {
+    setSelectedChit(chit);
+    const { data, error } = await supabase
+        .from('chit_members')
+        .select('*')
+        .eq('chit_id', chit.id)
+        .eq('lottery_status', 'Pending');
+    
+    if (error) console.error(error);
+    else setEligibleMembers(data as ChitMember[]);
+    setIsLotteryModalOpen(true);
+  };
+
+  const handleDrawWinner = async () => {
+    if (!selectedChit || eligibleMembers.length === 0) return;
+    const winner = eligibleMembers[Math.floor(Math.random() * eligibleMembers.length)];
+
+    if (window.confirm(`The winner is ${winner.name}. Confirm?`)) {
+        await supabase.from('chit_members').update({ lottery_status: 'Won' }).eq('id', winner.id);
+        await supabase.from('chit_transactions').insert([{
+            member_id: winner.id,
+            date: new Date().toISOString().split('T')[0],
+            amount: selectedChit.total_value,
+            type: 'Received',
+            description: 'Lottery Prize'
+        }]);
+        setIsLotteryModalOpen(false);
+        fetchData();
+    }
+  };
 
 
   const tableHeaders = ['Chit Name', 'Total Value', 'Members', 'Collected', 'Given', 'Savings', 'Status', 'Actions'];
@@ -125,8 +191,8 @@ const ChitsPage: React.FC = () => {
   const renderChitRow = (chit: Chit) => (
     <tr key={chit.id} className="border-b hover:bg-gray-50">
       <td className="p-4 font-medium text-textPrimary">{chit.name}</td>
-      <td className="p-4">₹{chit.total_value.toLocaleString()}</td>
-      <td className="p-4">{chit.members_count}</td>
+      <td className="p-4 text-textPrimary">₹{chit.total_value.toLocaleString()}</td>
+      <td className="p-4 text-textPrimary">{chit.members_count}</td>
       <td className="p-4 text-green-600">₹{chit.amountCollected.toLocaleString()}</td>
       <td className="p-4 text-red-600">₹{chit.amountGiven.toLocaleString()}</td>
       <td className="p-4 font-semibold text-blue-700">₹{(chit.amountCollected - chit.amountGiven).toLocaleString()}</td>
@@ -135,10 +201,11 @@ const ChitsPage: React.FC = () => {
           {chit.status}
         </span>
       </td>
-      <td className="p-4 space-x-2">
+      <td className="p-4 space-x-2 whitespace-nowrap">
         <button onClick={() => navigate(`/chits/${chit.id}`)} className="text-primary hover:underline">Details</button>
-        <button onClick={() => handleOpenModal(setIsEditModalOpen, chit, { ...chit })} className="text-yellow-600 hover:underline">Edit</button>
-        <button className="text-secondary hover:underline disabled:text-gray-400" disabled>Lottery</button>
+        <button onClick={() => handleOpenLotteryModal(chit)} className="text-secondary hover:underline">Lottery</button>
+        <button onClick={() => handleOpenModal(setIsEditModalOpen, chit, { ...chit })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
+        <button onClick={() => handleDeleteChit(chit.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
       </td>
     </tr>
   );
@@ -148,7 +215,11 @@ const ChitsPage: React.FC = () => {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6 text-textPrimary">Chits Management</h1>
-      
+      {notification && (
+        <div className={`p-4 mb-4 rounded-md ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {notification.message}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard title="Active Chits" value={loading ? '...' : chits.filter(c => c.status === 'Ongoing').length.toString()} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} color="bg-yellow-500" />
         <StatCard title="Total Collected" value={loading ? '₹...' : `₹${overview.totalCollected.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} color="bg-green-500" />
@@ -158,10 +229,27 @@ const ChitsPage: React.FC = () => {
 
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-semibold text-textPrimary">Chit Groups</h2>
-        <button onClick={() => handleOpenModal(setIsAddChitModalOpen, null)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">+ Add Chit</button>
+        <button onClick={() => handleOpenModal(setIsAddChitModalOpen, null)} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors shadow-sm">+ Add Chit</button>
       </div>
 
       {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={chits} renderRow={renderChitRow} />}
+
+      {/* Lottery Modal */}
+      <Modal isOpen={isLotteryModalOpen} onClose={() => setIsLotteryModalOpen(false)} title={`Lottery for ${selectedChit?.name}`}>
+        <h3 className="text-lg font-medium text-textPrimary mb-4">Eligible Members</h3>
+        {eligibleMembers.length > 0 ? (
+          <>
+            <ul className="space-y-2 max-h-60 overflow-y-auto mb-4">
+              {eligibleMembers.map(member => <li key={member.id} className="p-2 border rounded-md">{member.name}</li>)}
+            </ul>
+            <div className="text-right">
+              <button onClick={handleDrawWinner} className="px-4 py-2 bg-green-100 text-green-800 font-semibold rounded-md hover:bg-green-200">Draw Winner</button>
+            </div>
+          </>
+        ) : (
+          <p>No eligible members remaining for the lottery.</p>
+        )}
+      </Modal>
 
       {/* Edit Chit Modal */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Chit: ${selectedChit?.name}`}>
@@ -184,7 +272,7 @@ const ChitsPage: React.FC = () => {
               </div>
               <div className="text-right">
                   <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
+                  <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Save Changes</button>
               </div>
           </form>
       </Modal>
@@ -210,7 +298,7 @@ const ChitsPage: React.FC = () => {
               </div>
               <div className="text-right">
                   <button type="button" onClick={() => setIsAddChitModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Create Chit</button>
+                  <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Create Chit</button>
               </div>
           </form>
       </Modal>

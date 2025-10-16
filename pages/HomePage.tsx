@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { NAV_ITEMS } from '../constants';
@@ -13,18 +12,6 @@ const HomePage: React.FC = () => {
         <p className="text-lg text-textSecondary mt-2">Welcome! Select a module to get started.</p>
       </header>
       
-      <div className="flex items-center mb-8 bg-surface p-4 rounded-lg shadow-md">
-        <label htmlFor="business-select" className="text-md font-medium text-textPrimary mr-4">Current Business:</label>
-        <select id="business-select" className="block w-full max-w-xs p-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
-          <option>Main Business</option>
-          <option>Side Project Alpha</option>
-          <option>Retail Store</option>
-        </select>
-        <button className="ml-4 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
-          + Add New
-        </button>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {moduleItems.map((item) => (
           <Link to={item.path} key={item.name} className="block group">

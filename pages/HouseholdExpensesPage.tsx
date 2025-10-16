@@ -4,6 +4,7 @@ import Table from '../components/Table';
 import Modal from '../components/Modal';
 import { supabase } from '../supabaseClient';
 import { Expense } from '../types';
+import { EditIcon, TrashIcon } from '../constants';
 
 const HouseholdExpensesPage: React.FC = () => {
     const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -12,6 +13,12 @@ const HouseholdExpensesPage: React.FC = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const [formState, setFormState] = useState<any>({});
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const showNotification = (message: string, type: 'success' | 'error') => {
+        setNotification({ message, type });
+        setTimeout(() => setNotification(null), 3000);
+    };
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -72,11 +79,16 @@ const HouseholdExpensesPage: React.FC = () => {
         }
     };
 
-    const handleRemove = async (expenseId: number) => {
-        if (window.confirm('Are you sure you want to remove this transaction?')) {
+    const handleDeleteExpense = async (expenseId: number) => {
+        if (window.confirm('Are you sure you want to delete this transaction?')) {
             const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
-            if (error) console.error(error);
-            else fetchData();
+            if (error) {
+                console.error(error);
+                showNotification(`Error deleting expense: ${error.message}`, 'error');
+            } else {
+                showNotification('Expense deleted successfully!', 'success');
+                fetchData();
+            }
         }
     };
 
@@ -103,8 +115,8 @@ const HouseholdExpensesPage: React.FC = () => {
                 </span>
             </td>
             <td className="p-4 space-x-2">
-                <button onClick={() => handleOpenModal(setIsEditModalOpen, expense, { ...expense })} className="text-primary hover:underline">Edit</button>
-                <button onClick={() => handleRemove(expense.id)} className="text-red-600 hover:underline">Remove</button>
+                <button onClick={() => handleOpenModal(setIsEditModalOpen, expense, { ...expense })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
+                <button onClick={() => handleDeleteExpense(expense.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
             </td>
         </tr>
     );
@@ -114,6 +126,11 @@ const HouseholdExpensesPage: React.FC = () => {
     return (
         <div>
             <h1 className="text-3xl font-bold mb-6 text-textPrimary">Household Expenses</h1>
+            {notification && (
+                <div className={`p-4 mb-4 rounded-md ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {notification.message}
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 <StatCard title="Total Income" value={`₹${overview.totalIncome.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>} color="bg-green-500" />
                 <StatCard title="Total Expenses" value={`₹${overview.totalExpenses.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>} color="bg-red-500" />
@@ -122,7 +139,7 @@ const HouseholdExpensesPage: React.FC = () => {
 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-textPrimary">Transactions</h2>
-                <button onClick={() => handleOpenModal(setIsAddModalOpen, null, { expense_date: new Date().toISOString().split('T')[0], type: 'Expense' })} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
+                <button onClick={() => handleOpenModal(setIsAddModalOpen, null, { expense_date: new Date().toISOString().split('T')[0], type: 'Expense' })} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors shadow-sm">
                     + Add Transaction
                 </button>
             </div>
@@ -157,7 +174,7 @@ const HouseholdExpensesPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">{isEditModalOpen ? 'Save Changes' : 'Save'}</button>
+                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">{isEditModalOpen ? 'Save Changes' : 'Save'}</button>
                     </div>
                 </form>
             </Modal>

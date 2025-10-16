@@ -4,6 +4,7 @@ import Table from '../components/Table';
 import Modal from '../components/Modal';
 import { supabase } from '../supabaseClient';
 import { Customer, CustomerTransaction } from '../types';
+import { EditIcon, TrashIcon } from '../constants';
 
 const DailyBusinessPage: React.FC = () => {
     const [customers, setCustomers] = useState<Customer[]>([]);
@@ -14,9 +15,17 @@ const DailyBusinessPage: React.FC = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
     const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
+    const [isEditTxModalOpen, setIsEditTxModalOpen] = useState(false);
     
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [selectedTransaction, setSelectedTransaction] = useState<CustomerTransaction | null>(null);
     const [formState, setFormState] = useState<any>({});
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const showNotification = (message: string, type: 'success' | 'error') => {
+        setNotification({ message, type });
+        setTimeout(() => setNotification(null), 3000);
+    };
     
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -86,6 +95,20 @@ const DailyBusinessPage: React.FC = () => {
             fetchData();
         }
     };
+    
+    const handleDeleteCustomer = async (customerId: number) => {
+        if (window.confirm('Are you sure you want to delete this customer and all their transactions? This action cannot be undone.')) {
+            await supabase.from('customer_transactions').delete().eq('customer_id', customerId);
+            const { error } = await supabase.from('customers').delete().eq('id', customerId);
+            if (error) {
+                console.error(error);
+                showNotification(`Error deleting customer: ${error.message}`, 'error');
+            } else {
+                showNotification('Customer deleted successfully!', 'success');
+                fetchData();
+            }
+        }
+    };
 
     const handleAddTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -102,6 +125,37 @@ const DailyBusinessPage: React.FC = () => {
         else {
             setIsAddTxModalOpen(false);
             fetchData();
+        }
+    };
+
+    const handleUpdateTransaction = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedTransaction) return;
+        const { error } = await supabase.from('customer_transactions').update({
+            date: formState.date,
+            amount: parseFloat(formState.amount),
+            description: formState.description,
+            type: formState.type,
+        }).eq('id', selectedTransaction.id);
+
+        if (error) console.error(error);
+        else {
+            setIsEditTxModalOpen(false);
+            fetchData();
+        }
+    };
+
+    const handleDeleteTransaction = async (transactionId: number) => {
+        if (window.confirm('Are you sure you want to delete this transaction?')) {
+            const { error } = await supabase.from('customer_transactions').delete().eq('id', transactionId);
+            if (error) {
+                console.error(error);
+                showNotification(`Error deleting transaction: ${error.message}`, 'error');
+            } else {
+                showNotification('Transaction deleted successfully!', 'success');
+                setTransactions(prev => prev.filter(tx => tx.id !== transactionId));
+                fetchData();
+            }
         }
     };
     
@@ -127,10 +181,11 @@ const DailyBusinessPage: React.FC = () => {
                     {customer.status}
                 </span>
             </td>
-            <td className="p-4 space-x-2">
+            <td className="p-4 space-x-2 whitespace-nowrap">
                 <button onClick={() => { setSelectedCustomer(customer); setIsViewModalOpen(true); }} className="text-primary hover:underline">View</button>
-                <button onClick={() => handleOpenModal(setIsEditModalOpen, customer, { ...customer })} className="text-yellow-600 hover:underline">Edit</button>
                 <button onClick={() => handleOpenModal(setIsAddTxModalOpen, customer, { date: new Date().toISOString().split('T')[0], type: 'Given' })} className="text-blue-600 hover:underline">Add Tx</button>
+                <button onClick={() => handleOpenModal(setIsEditModalOpen, customer, { ...customer })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
+                <button onClick={() => handleDeleteCustomer(customer.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
             </td>
         </tr>
     );
@@ -146,6 +201,11 @@ const DailyBusinessPage: React.FC = () => {
     return (
         <div>
             <h1 className="text-3xl font-bold mb-6 text-textPrimary">Daily Business</h1>
+             {notification && (
+                <div className={`p-4 mb-4 rounded-md ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {notification.message}
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 <StatCard title="Total Given" value={`₹${overview.totalGiven.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>} color="bg-green-500" />
                 <StatCard title="Total Received" value={`₹${overview.totalReceived.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>} color="bg-red-500" />
@@ -154,7 +214,7 @@ const DailyBusinessPage: React.FC = () => {
 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-textPrimary">Customers</h2>
-                <button onClick={() => handleOpenModal(setIsAddCustomerModalOpen, null)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
+                <button onClick={() => handleOpenModal(setIsAddCustomerModalOpen, null)} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors shadow-sm">
                     + Add Customer
                 </button>
             </div>
@@ -164,16 +224,20 @@ const DailyBusinessPage: React.FC = () => {
             {/* View Transactions Modal */}
             <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`Transactions for ${selectedCustomer?.name}`}>
                 {customerTransactions.length > 0 ? (
-                    <ul className="space-y-2 max-h-80 overflow-y-auto">
+                    <ul className="space-y-2 max-h-96 overflow-y-auto">
                         {customerTransactions.map(tx => (
-                            <li key={tx.id} className="p-3 border rounded-md flex justify-between items-center bg-gray-50">
-                                <div>
+                            <li key={tx.id} className="p-3 border rounded-md flex justify-between items-center bg-white">
+                                <div className="flex-1">
                                     <p className="font-medium text-textPrimary">{tx.description || 'Transaction'}</p>
                                     <p className="text-sm text-textSecondary">{new Date(tx.date).toLocaleDateString()}</p>
+                                    <span className={`font-semibold text-lg ${tx.type === 'Received' ? 'text-red-600' : 'text-green-600'}`}>
+                                        {tx.type === 'Received' ? '-' : '+'}₹{tx.amount.toLocaleString()}
+                                    </span>
                                 </div>
-                                <span className={`font-semibold text-lg ${tx.type === 'Received' ? 'text-red-600' : 'text-green-600'}`}>
-                                    {tx.type === 'Received' ? '-' : '+'}₹{tx.amount.toLocaleString()}
-                                </span>
+                                <div className="space-x-1">
+                                    <button onClick={() => { setSelectedTransaction(tx); setFormState(tx); setIsEditTxModalOpen(true); }} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
+                                    <button onClick={() => handleDeleteTransaction(tx.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
+                                </div>
                             </li>
                         ))}
                     </ul>
@@ -206,7 +270,7 @@ const DailyBusinessPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
+                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Save Changes</button>
                     </div>
                 </form>
             </Modal>
@@ -228,25 +292,25 @@ const DailyBusinessPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsAddCustomerModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Add Customer</button>
+                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Add Customer</button>
                     </div>
                 </form>
             </Modal>
 
-            {/* Add Transaction Modal */}
-            <Modal isOpen={isAddTxModalOpen} onClose={() => setIsAddTxModalOpen(false)} title={`Add Transaction for ${selectedCustomer?.name}`}>
-                 <form onSubmit={handleAddTransaction}>
+            {/* Add/Edit Transaction Modal */}
+            <Modal isOpen={isAddTxModalOpen || isEditTxModalOpen} onClose={() => { setIsAddTxModalOpen(false); setIsEditTxModalOpen(false); }} title={isEditTxModalOpen ? "Edit Transaction" : `Add Transaction for ${selectedCustomer?.name}`}>
+                 <form onSubmit={isEditTxModalOpen ? handleUpdateTransaction : handleAddTransaction}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
-                        <input type="date" name="date" className={formInputStyle} value={formState.date || ''} onChange={handleFormChange} required />
+                        <input type="date" name="date" className={formInputStyle} value={formState.date ? new Date(formState.date).toISOString().split('T')[0] : ''} onChange={handleFormChange} required />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Amount (₹)</label>
-                        <input type="number" name="amount" className={formInputStyle} placeholder="Enter amount" onChange={handleFormChange} required />
+                        <input type="number" name="amount" className={formInputStyle} placeholder="Enter amount" value={formState.amount || ''} onChange={handleFormChange} required />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
-                        <input type="text" name="description" className={formInputStyle} placeholder="e.g., Goods purchased" onChange={handleFormChange} />
+                        <input type="text" name="description" className={formInputStyle} placeholder="e.g., Goods purchased" value={formState.description || ''} onChange={handleFormChange} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Transaction Type</label>
@@ -256,8 +320,8 @@ const DailyBusinessPage: React.FC = () => {
                         </select>
                     </div>
                     <div className="text-right">
-                        <button type="button" onClick={() => setIsAddTxModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Transaction</button>
+                        <button type="button" onClick={() => { setIsAddTxModalOpen(false); setIsEditTxModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">{isEditTxModalOpen ? "Save Changes" : "Save Transaction"}</button>
                     </div>
                 </form>
             </Modal>

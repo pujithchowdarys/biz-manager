@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
@@ -8,21 +9,22 @@ import { Chit } from '../types';
 
 const ChitsPage: React.FC = () => {
   const [chits] = useState<Chit[]>(MOCK_CHITS);
-  const [isDetailModalOpen, setDetailModalOpen] = useState(false);
   const [isLotteryModalOpen, setLotteryModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedChit, setSelectedChit] = useState<Chit | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
-
-  const handleViewDetails = (chit: Chit) => {
-    setSelectedChit(chit);
-    setDetailModalOpen(true);
-  };
+  const navigate = useNavigate();
 
   const handleLottery = (chit: Chit) => {
     setSelectedChit(chit);
     setLotteryModalOpen(true);
     setWinner(null);
+  };
+  
+  const handleEdit = (chit: Chit) => {
+    setSelectedChit(chit);
+    setIsEditModalOpen(true);
   };
 
   const runLottery = () => {
@@ -30,8 +32,12 @@ const ChitsPage: React.FC = () => {
     setWinner(null);
     const potentialWinners = MOCK_CHIT_MEMBERS.filter(m => m.lotteryStatus === 'Pending');
     setTimeout(() => {
-        const randomIndex = Math.floor(Math.random() * potentialWinners.length);
-        setWinner(potentialWinners[randomIndex].name);
+        if (potentialWinners.length > 0) {
+            const randomIndex = Math.floor(Math.random() * potentialWinners.length);
+            setWinner(potentialWinners[randomIndex].name);
+        } else {
+            setWinner("No eligible members");
+        }
         setSpinning(false);
     }, 3000);
   };
@@ -52,24 +58,11 @@ const ChitsPage: React.FC = () => {
         </span>
       </td>
       <td className="p-4 space-x-2">
-        <button onClick={() => handleViewDetails(chit)} className="text-primary hover:underline">Details</button>
+        <button onClick={() => navigate(`/chits/${chit.id}`)} className="text-primary hover:underline">Details</button>
+        <button onClick={() => handleEdit(chit)} className="text-yellow-600 hover:underline">Edit</button>
         <button onClick={() => handleLottery(chit)} className="text-secondary hover:underline">Lottery</button>
       </td>
     </tr>
-  );
-  
-  const memberHeaders = ['Member Name', 'Total Received', 'Total Given', 'Last Transaction', 'Lottery Status'];
-  
-  const renderMemberRow = (member: typeof MOCK_CHIT_MEMBERS[0]) => (
-     <tr key={member.id} className="border-b hover:bg-gray-50">
-        <td className="p-4 font-medium text-textPrimary">{member.name}</td>
-        <td className="p-4 text-green-600">₹{member.totalReceived.toLocaleString()}</td>
-        <td className="p-4 text-red-600">₹{member.totalGiven.toLocaleString()}</td>
-        <td className="p-4">{member.lastTx}</td>
-        <td className="p-4">
-           <span className={`px-2 py-1 text-xs font-semibold rounded-full ${member.lotteryStatus === 'Won' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{member.lotteryStatus}</span>
-        </td>
-     </tr>
   );
 
   return (
@@ -89,10 +82,6 @@ const ChitsPage: React.FC = () => {
 
       <Table headers={tableHeaders} data={chits} renderRow={renderChitRow} />
       
-      <Modal isOpen={isDetailModalOpen} onClose={() => setDetailModalOpen(false)} title={`Members of ${selectedChit?.name}`}>
-        <Table headers={memberHeaders} data={MOCK_CHIT_MEMBERS} renderRow={renderMemberRow}/>
-      </Modal>
-
       <Modal isOpen={isLotteryModalOpen} onClose={() => setLotteryModalOpen(false)} title={`Lottery for ${selectedChit?.name}`}>
         <div className="text-center">
             <h3 className="text-lg font-medium mb-4">Spin the wheel to select a winner!</h3>
@@ -108,6 +97,19 @@ const ChitsPage: React.FC = () => {
                 {spinning ? 'Spinning...' : 'Spin'}
             </button>
         </div>
+      </Modal>
+
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Chit: ${selectedChit?.name}`}>
+          <form>
+              <div className="mb-4">
+                  <label className="block text-sm font-medium text-textSecondary mb-1">Chit Name</label>
+                  <input type="text" className="w-full p-2 border rounded-md" defaultValue={selectedChit?.name} />
+              </div>
+              <div className="text-right">
+                  <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
+              </div>
+          </form>
       </Modal>
     </div>
   );

@@ -9,6 +9,7 @@ import HouseholdExpensesPage from './pages/HouseholdExpensesPage';
 import LoansPage from './pages/LoansPage';
 import SummaryReportPage from './pages/SummaryReportPage';
 import SettingsPage from './pages/SettingsPage';
+import ChitDetailsPage from './pages/ChitDetailsPage';
 
 const App: React.FC = () => {
   return (
@@ -20,6 +21,7 @@ const App: React.FC = () => {
             <Route path="/" element={<HomePage />} />
             <Route path="/daily-business" element={<DailyBusinessPage />} />
             <Route path="/chits" element={<ChitsPage />} />
+            <Route path="/chits/:chitId" element={<ChitDetailsPage />} />
             <Route path="/household-expenses" element={<HouseholdExpensesPage />} />
             <Route path="/loans" element={<LoansPage />} />
             <Route path="/summary-report" element={<SummaryReportPage />} />

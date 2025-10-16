@@ -3,8 +3,8 @@ import React from 'react';
 interface StatCardProps {
   title: string;
   value: string;
-  // Fix: Changed JSX.Element to React.ReactElement to explicitly use the React namespace and resolve the error.
-  icon: React.ReactElement;
+  // Fix: Explicitly type icon to accept className for React.cloneElement.
+  icon: React.ReactElement<{ className?: string }>;
   color: string;
 }
 

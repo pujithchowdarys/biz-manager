@@ -2,11 +2,14 @@
 import React, { useState } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
+import Modal from '../components/Modal';
 import { MOCK_LOANS } from '../constants';
 import { Loan } from '../types';
 
 const LoansPage: React.FC = () => {
     const [loans] = useState<Loan[]>(MOCK_LOANS);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
 
     const overview = loans.reduce((acc, curr) => {
         if (curr.type === 'Taken') acc.loansTaken++;
@@ -15,6 +18,11 @@ const LoansPage: React.FC = () => {
         acc.balanceLeft += (curr.principal - curr.paid);
         return acc;
     }, { loansTaken: 0, loansGiven: 0, amountPaid: 0, balanceLeft: 0 });
+
+    const handleEdit = (loan: Loan) => {
+        setSelectedLoan(loan);
+        setIsEditModalOpen(true);
+    };
 
     const tableHeaders = ['Loan Name', 'Principal', 'Paid', 'Balance', 'Type', 'Status', 'Actions'];
 
@@ -36,6 +44,7 @@ const LoansPage: React.FC = () => {
             </td>
             <td className="p-4 space-x-2">
                 <button className="text-primary hover:underline">View</button>
+                <button onClick={() => handleEdit(loan)} className="text-yellow-600 hover:underline">Edit</button>
                 <button className="text-blue-600 hover:underline">Add Payment</button>
             </td>
         </tr>
@@ -59,6 +68,23 @@ const LoansPage: React.FC = () => {
             </div>
 
             <Table headers={tableHeaders} data={loans} renderRow={renderLoanRow} />
+
+            <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Loan: ${selectedLoan?.name}`}>
+                 <form>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Loan Name</label>
+                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={selectedLoan?.name} />
+                    </div>
+                     <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Principal Amount</label>
+                        <input type="number" className="w-full p-2 border rounded-md" defaultValue={selectedLoan?.principal} />
+                    </div>
+                    <div className="text-right">
+                        <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 };

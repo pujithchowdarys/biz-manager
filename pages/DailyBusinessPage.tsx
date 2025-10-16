@@ -8,7 +8,8 @@ import { Customer } from '../types';
 
 const DailyBusinessPage: React.FC = () => {
     const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
     const overview = customers.reduce((acc, curr) => {
@@ -21,7 +22,12 @@ const DailyBusinessPage: React.FC = () => {
 
     const handleView = (customer: Customer) => {
         setSelectedCustomer(customer);
-        setIsModalOpen(true);
+        setIsViewModalOpen(true);
+    };
+    
+    const handleEdit = (customer: Customer) => {
+        setSelectedCustomer(customer);
+        setIsEditModalOpen(true);
     };
 
     const tableHeaders = ['Customer Name', 'Total Given', 'Total Received', 'Balance', 'Status', 'Actions'];
@@ -41,6 +47,7 @@ const DailyBusinessPage: React.FC = () => {
             </td>
             <td className="p-4 space-x-2">
                 <button onClick={() => handleView(customer)} className="text-primary hover:underline">View</button>
+                <button onClick={() => handleEdit(customer)} className="text-yellow-600 hover:underline">Edit</button>
                 <button className="text-blue-600 hover:underline">Add Tx</button>
             </td>
         </tr>
@@ -64,13 +71,33 @@ const DailyBusinessPage: React.FC = () => {
             
             <Table headers={tableHeaders} data={customers} renderRow={renderCustomerRow} />
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`Transactions for ${selectedCustomer?.name}`}>
+            <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`Transactions for ${selectedCustomer?.name}`}>
                 <p>This is where the transaction history for {selectedCustomer?.name} would be displayed.</p>
                  <div className="mt-4 text-sm">
                     <p><strong>Total Given:</strong> ₹{selectedCustomer?.totalGiven.toLocaleString()}</p>
                     <p><strong>Total Received:</strong> ₹{selectedCustomer?.totalReceived.toLocaleString()}</p>
                     <p className="font-bold"><strong>Balance:</strong> ₹{(selectedCustomer?.totalGiven ?? 0 - (selectedCustomer?.totalReceived ?? 0)).toLocaleString()}</p>
                 </div>
+            </Modal>
+            
+            <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Customer: ${selectedCustomer?.name}`}>
+                 <form>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Customer Name</label>
+                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={selectedCustomer?.name} />
+                    </div>
+                     <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Status</label>
+                        <select className="w-full p-2 border rounded-md" defaultValue={selectedCustomer?.status}>
+                            <option>Active</option>
+                            <option>Inactive</option>
+                        </select>
+                    </div>
+                    <div className="text-right">
+                        <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
+                    </div>
+                </form>
             </Modal>
         </div>
     );

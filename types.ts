@@ -3,8 +3,8 @@ import React from 'react';
 export interface NavItem {
   path: string;
   name: string;
-  // Fix: Changed JSX.Element to React.ReactElement to explicitly use the React namespace.
-  icon: React.ReactElement;
+  // Fix: Explicitly type the 'icon' prop to accept a 'className'. This allows cloning the element with new styles.
+  icon: React.ReactElement<{ className?: string }>;
 }
 
 export interface Customer {
@@ -41,4 +41,21 @@ export interface Loan {
     paid: number;
     type: 'Taken' | 'Given';
     status: 'Active' | 'Paid Off';
+}
+
+export interface MemberTransaction {
+  id: number;
+  date: string;
+  amount: number;
+  type: 'Given' | 'Received';
+  description: string;
+}
+
+export interface ChitMember {
+  id: number;
+  name: string;
+  totalReceived: number;
+  totalGiven: number;
+  lastTx: string;
+  lotteryStatus: 'Pending' | 'Won';
 }

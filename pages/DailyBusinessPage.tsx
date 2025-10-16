@@ -1,67 +1,116 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { useEffect } from 'react'; // React's hook for side effects
-import { supabase } from '../supabaseClient'; // Our new client
-import { Customer } from '../types';
+import { supabase } from '../supabaseClient';
+import { Customer, CustomerTransaction } from '../types';
 
 const DailyBusinessPage: React.FC = () => {
-    //const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
+    const [loading, setLoading] = useState(true);
+    
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
     const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
+    
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-
-    const [customers, setCustomers] = useState<Customer[]>([]); // Start with an empty array
-    const [loading, setLoading] = useState(true);
-
-    async function getCustomers() {
+    const [formState, setFormState] = useState<any>({});
+    
+    const fetchData = useCallback(async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('customers') // The name of your table
-            .select('*'); // Get all columns
+        const { data: customersData, error: customersError } = await supabase
+            .from('customers')
+            .select('*')
+            .order('name', { ascending: true });
 
-        if (error) {
-            console.warn(error);
-        } else if (data) {
-            // Here you would need to calculate totals, as they are not in the DB
-            // For now, let's just add placeholder values
-            const customersWithTotals = data.map(c => ({...c, totalGiven: 0, totalReceived: 0}));
+        const { data: transactionsData, error: transactionsError } = await supabase
+            .from('customer_transactions')
+            .select('*');
+
+        if (customersError || transactionsError) {
+            console.error(customersError || transactionsError);
+        } else if (customersData && transactionsData) {
+            const customersWithTotals = customersData.map(customer => {
+                const txs = transactionsData.filter(tx => tx.customer_id === customer.id);
+                const totalGiven = txs.filter(t => t.type === 'Given').reduce((sum, t) => sum + t.amount, 0);
+                const totalReceived = txs.filter(t => t.type === 'Received').reduce((sum, t) => sum + t.amount, 0);
+                return { ...customer, totalGiven, totalReceived };
+            });
             setCustomers(customersWithTotals);
         }
         setLoading(false);
-    }
+    }, []);
 
     useEffect(() => {
-        getCustomers();
-    }, []);
-    
+        fetchData();
+    }, [fetchData]);
 
+    const handleOpenModal = (modalSetter: React.Dispatch<React.SetStateAction<boolean>>, customer: Customer | null = null, initialFormState = {}) => {
+        setSelectedCustomer(customer);
+        setFormState(initialFormState);
+        modalSetter(true);
+    };
+
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setFormState({ ...formState, [e.target.name]: e.target.value });
+    };
+
+    const handleAddCustomer = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const { error } = await supabase.from('customers').insert([
+            { name: formState.name, phone: formState.phone, address: formState.address, status: 'Active' }
+        ]);
+        if (error) console.error(error);
+        else {
+            setIsAddCustomerModalOpen(false);
+            fetchData();
+        }
+    };
+    
+    const handleUpdateCustomer = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedCustomer) return;
+        const { error } = await supabase.from('customers').update({
+            name: formState.name,
+            phone: formState.phone,
+            address: formState.address,
+            status: formState.status
+        }).eq('id', selectedCustomer.id);
+        
+        if (error) console.error(error);
+        else {
+            setIsEditModalOpen(false);
+            fetchData();
+        }
+    };
+
+    const handleAddTransaction = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedCustomer) return;
+        const { error } = await supabase.from('customer_transactions').insert([{
+            customer_id: selectedCustomer.id,
+            date: formState.date,
+            amount: parseFloat(formState.amount),
+            description: formState.description,
+            type: formState.type
+        }]);
+
+        if (error) console.error(error);
+        else {
+            setIsAddTxModalOpen(false);
+            fetchData();
+        }
+    };
+    
     const overview = customers.reduce((acc, curr) => {
         acc.totalGiven += curr.totalGiven;
         acc.totalReceived += curr.totalReceived;
         return acc;
     }, { totalGiven: 0, totalReceived: 0 });
-
     const balance = overview.totalGiven - overview.totalReceived;
-
-    const handleView = (customer: Customer) => {
-        setSelectedCustomer(customer);
-        setIsViewModalOpen(true);
-    };
     
-    const handleEdit = (customer: Customer) => {
-        setSelectedCustomer(customer);
-        setIsEditModalOpen(true);
-    };
-
-    const handleAddTransaction = (customer: Customer) => {
-        setSelectedCustomer(customer);
-        setIsAddTxModalOpen(true);
-    }
-
     const tableHeaders = ['Customer Name', 'Total Given', 'Total Received', 'Balance', 'Status', 'Actions'];
 
     const renderCustomerRow = (customer: Customer) => (
@@ -78,14 +127,14 @@ const DailyBusinessPage: React.FC = () => {
                 </span>
             </td>
             <td className="p-4 space-x-2">
-                <button onClick={() => handleView(customer)} className="text-primary hover:underline">View</button>
-                <button onClick={() => handleEdit(customer)} className="text-yellow-600 hover:underline">Edit</button>
-                <button onClick={() => handleAddTransaction(customer)} className="text-blue-600 hover:underline">Add Tx</button>
+                <button onClick={() => { setSelectedCustomer(customer); setIsViewModalOpen(true); }} className="text-primary hover:underline">View</button>
+                <button onClick={() => handleOpenModal(setIsEditModalOpen, customer, { ...customer })} className="text-yellow-600 hover:underline">Edit</button>
+                <button onClick={() => handleOpenModal(setIsAddTxModalOpen, customer, { date: new Date().toISOString().split('T')[0], type: 'Given' })} className="text-blue-600 hover:underline">Add Tx</button>
             </td>
         </tr>
     );
 
-    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary";
+    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
 
     return (
         <div>
@@ -98,41 +147,37 @@ const DailyBusinessPage: React.FC = () => {
 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-textPrimary">Customers</h2>
-                <button onClick={() => setIsAddCustomerModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
+                <button onClick={() => handleOpenModal(setIsAddCustomerModalOpen, null)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
                     + Add Customer
                 </button>
             </div>
             
-            <Table headers={tableHeaders} data={customers} renderRow={renderCustomerRow} />
+            {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={customers} renderRow={renderCustomerRow} />}
 
             {/* View Transactions Modal */}
             <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`Transactions for ${selectedCustomer?.name}`}>
-                <p>This is where the transaction history for {selectedCustomer?.name} would be displayed.</p>
-                 <div className="mt-4 text-sm">
-                    <p><strong>Total Given:</strong> ₹{selectedCustomer?.totalGiven.toLocaleString()}</p>
-                    <p><strong>Total Received:</strong> ₹{selectedCustomer?.totalReceived.toLocaleString()}</p>
-                    <p className="font-bold"><strong>Balance:</strong> ₹{(selectedCustomer?.totalGiven ?? 0 - (selectedCustomer?.totalReceived ?? 0)).toLocaleString()}</p>
-                </div>
+                {/* Content to be implemented */}
+                <p>Transaction history functionality to be added.</p>
             </Modal>
             
             {/* Edit Customer Modal */}
             <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Customer: ${selectedCustomer?.name}`}>
-                 <form>
+                 <form onSubmit={handleUpdateCustomer}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Customer Name</label>
-                        <input type="text" className={formInputStyle} defaultValue={selectedCustomer?.name} />
+                        <input type="text" name="name" className={formInputStyle} value={formState.name || ''} onChange={handleFormChange} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Phone Number</label>
-                        <input type="text" className={formInputStyle} defaultValue={selectedCustomer?.phone} />
+                        <input type="text" name="phone" className={formInputStyle} value={formState.phone || ''} onChange={handleFormChange} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Address</label>
-                        <input type="text" className={formInputStyle} defaultValue={selectedCustomer?.address} />
+                        <input type="text" name="address" className={formInputStyle} value={formState.address || ''} onChange={handleFormChange} />
                     </div>
                      <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Status</label>
-                        <select className={formInputStyle} defaultValue={selectedCustomer?.status}>
+                        <select name="status" className={formInputStyle} value={formState.status || 'Active'} onChange={handleFormChange}>
                             <option>Active</option>
                             <option>Inactive</option>
                         </select>
@@ -146,18 +191,18 @@ const DailyBusinessPage: React.FC = () => {
 
             {/* Add Customer Modal */}
             <Modal isOpen={isAddCustomerModalOpen} onClose={() => setIsAddCustomerModalOpen(false)} title="Add New Customer">
-                 <form>
+                 <form onSubmit={handleAddCustomer}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Customer Name</label>
-                        <input type="text" className={formInputStyle} placeholder="Enter full name" />
+                        <input type="text" name="name" className={formInputStyle} placeholder="Enter full name" onChange={handleFormChange} required />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Phone Number</label>
-                        <input type="tel" className={formInputStyle} placeholder="Enter 10-digit mobile number" />
+                        <input type="tel" name="phone" className={formInputStyle} placeholder="Enter 10-digit mobile number" onChange={handleFormChange} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Address</label>
-                        <textarea className={formInputStyle} placeholder="Enter full address"></textarea>
+                        <textarea name="address" className={formInputStyle} placeholder="Enter full address" onChange={handleFormChange}></textarea>
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsAddCustomerModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
@@ -168,24 +213,24 @@ const DailyBusinessPage: React.FC = () => {
 
             {/* Add Transaction Modal */}
             <Modal isOpen={isAddTxModalOpen} onClose={() => setIsAddTxModalOpen(false)} title={`Add Transaction for ${selectedCustomer?.name}`}>
-                 <form>
+                 <form onSubmit={handleAddTransaction}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
-                        <input type="date" className={formInputStyle} />
+                        <input type="date" name="date" className={formInputStyle} value={formState.date || ''} onChange={handleFormChange} required />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Amount (₹)</label>
-                        <input type="number" className={formInputStyle} placeholder="Enter amount" />
+                        <input type="number" name="amount" className={formInputStyle} placeholder="Enter amount" onChange={handleFormChange} required />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
-                        <input type="text" className={formInputStyle} placeholder="e.g., Goods purchased" />
+                        <input type="text" name="description" className={formInputStyle} placeholder="e.g., Goods purchased" onChange={handleFormChange} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Transaction Type</label>
-                        <select className={formInputStyle}>
+                        <select name="type" className={formInputStyle} value={formState.type || 'Given'} onChange={handleFormChange}>
                             <option>Given</option>
-                            <option>Taken</option>
+                            <option>Received</option>
                         </select>
                     </div>
                     <div className="text-right">

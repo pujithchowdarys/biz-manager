@@ -1,38 +1,134 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { MOCK_CHITS, MOCK_CHIT_MEMBERS, MOCK_MEMBER_TRANSACTIONS } from '../constants';
-import { useEffect } from 'react'; // React's hook for side effects
-import { supabase } from '../supabaseClient'; // Our new client
-import { ChitMember, MemberTransaction } from '../types';
+import { supabase } from '../supabaseClient';
+import { Chit, ChitMember, ChitTransaction } from '../types';
 
 
 const ChitDetailsPage: React.FC = () => {
     const { chitId } = useParams<{ chitId: string }>();
-    const chit = MOCK_CHITS.find(c => c.id === parseInt(chitId || ''));
+    const [chit, setChit] = useState<Chit | null>(null);
+    const [members, setMembers] = useState<ChitMember[]>([]);
+    const [transactions, setTransactions] = useState<ChitTransaction[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const [isTxModalOpen, setTxModalOpen] = useState(false);
     const [isAddTxModalOpen, setAddTxModalOpen] = useState(false);
     const [isEditMemberModalOpen, setEditMemberModalOpen] = useState(false);
     const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+    
     const [selectedMember, setSelectedMember] = useState<ChitMember | null>(null);
+    const [formState, setFormState] = useState<any>({});
 
-    const handleViewTransactions = (member: ChitMember) => {
-        setSelectedMember(member);
-        setTxModalOpen(true);
+    const fetchData = useCallback(async () => {
+        if (!chitId) return;
+        setLoading(true);
+
+        const { data: chitData, error: chitError } = await supabase
+            .from('chits')
+            .select('*')
+            .eq('id', chitId)
+            .single();
+
+        const { data: membersData, error: membersError } = await supabase
+            .from('chit_members')
+            .select('*')
+            .eq('chit_id', chitId);
+
+        if (chitError || membersError) {
+            console.error(chitError || membersError);
+            setLoading(false);
+            return;
+        }
+
+        const memberIds = membersData.map(m => m.id);
+        const { data: txData, error: txError } = await supabase
+            .from('chit_transactions')
+            .select('*')
+            .in('member_id', memberIds);
+
+        if (txError) {
+            console.error(txError);
+        } else {
+            setChit(chitData);
+            setTransactions(txData || []);
+            const membersWithTotals = membersData.map(member => {
+                const memberTxs = (txData || []).filter(tx => tx.member_id === member.id);
+                const totalGiven = memberTxs.filter(t => t.type === 'Given').reduce((s, t) => s + t.amount, 0);
+                const totalReceived = memberTxs.filter(t => t.type === 'Received').reduce((s, t) => s + t.amount, 0);
+                const lastTx = memberTxs.length > 0 ? memberTxs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : 'N/A';
+                return { ...member, totalGiven, totalReceived, lastTx };
+            });
+            setMembers(membersWithTotals);
+        }
+        setLoading(false);
+    }, [chitId]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setFormState({ ...formState, [e.target.name]: e.target.value });
     };
 
-    const handleAddTransaction = (member: ChitMember) => {
+    const handleOpenModal = (modalSetter: React.Dispatch<React.SetStateAction<boolean>>, member: ChitMember | null = null, initialFormState = {}) => {
         setSelectedMember(member);
-        setAddTxModalOpen(true);
+        setFormState(initialFormState);
+        modalSetter(true);
     };
     
-    const handleEditMember = (member: ChitMember) => {
-        setSelectedMember(member);
-        setEditMemberModalOpen(true);
+    const handleAddMember = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const { error } = await supabase.from('chit_members').insert([{
+            chit_id: parseInt(chitId || ''),
+            name: formState.name,
+            phone: formState.phone,
+            email: formState.email,
+            address: formState.address,
+        }]);
+        if (error) console.error(error);
+        else {
+            setIsAddMemberModalOpen(false);
+            fetchData();
+        }
+    };
+    
+    const handleUpdateMember = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!selectedMember) return;
+        const { error } = await supabase.from('chit_members').update({
+             name: formState.name,
+            phone: formState.phone,
+            email: formState.email,
+            address: formState.address,
+        }).eq('id', selectedMember.id);
+        if(error) console.error(error);
+        else {
+            setEditMemberModalOpen(false);
+            fetchData();
+        }
+    };
+    
+    const handleAddTransaction = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!selectedMember) return;
+        const { error } = await supabase.from('chit_transactions').insert([{
+            member_id: selectedMember.id,
+            date: formState.date,
+            description: formState.description,
+            amount: parseFloat(formState.amount),
+            type: formState.type
+        }]);
+        if(error) console.error(error);
+        else {
+            setAddTxModalOpen(false);
+            fetchData();
+        }
     };
 
+    if (loading) return <p>Loading chit details...</p>;
     if (!chit) {
         return (
             <div>
@@ -52,18 +148,18 @@ const ChitDetailsPage: React.FC = () => {
             <td className="p-4 text-red-600">₹{member.totalGiven.toLocaleString()}</td>
             <td className="p-4">{member.lastTx}</td>
             <td className="p-4">
-               <span className={`px-2 py-1 text-xs font-semibold rounded-full ${member.lotteryStatus === 'Won' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{member.lotteryStatus}</span>
+               <span className={`px-2 py-1 text-xs font-semibold rounded-full ${member.lottery_status === 'Won' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{member.lottery_status}</span>
             </td>
             <td className="p-4 space-x-2">
-                <button onClick={() => handleViewTransactions(member)} className="text-primary hover:underline">Details</button>
-                <button onClick={() => handleEditMember(member)} className="text-yellow-600 hover:underline">Edit</button>
-                <button onClick={() => handleAddTransaction(member)} className="text-blue-600 hover:underline">Add Tx</button>
+                <button onClick={() => handleOpenModal(setTxModalOpen, member)} className="text-primary hover:underline">Details</button>
+                <button onClick={() => handleOpenModal(setEditMemberModalOpen, member, { ...member })} className="text-yellow-600 hover:underline">Edit</button>
+                <button onClick={() => handleOpenModal(setAddTxModalOpen, member, { date: new Date().toISOString().split('T')[0], type: 'Given' })} className="text-blue-600 hover:underline">Add Tx</button>
             </td>
          </tr>
     );
 
-    const memberTransactions = selectedMember ? MOCK_MEMBER_TRANSACTIONS[selectedMember.id] || [] : [];
-    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary";
+    const memberTransactions = selectedMember ? transactions.filter(tx => tx.member_id === selectedMember.id) : [];
+    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
 
     return (
         <div>
@@ -73,12 +169,12 @@ const ChitDetailsPage: React.FC = () => {
             
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-textPrimary">Members</h2>
-                <button onClick={() => setIsAddMemberModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
+                <button onClick={() => handleOpenModal(setIsAddMemberModalOpen, null)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
                     + Add Member
                 </button>
             </div>
 
-            <Table headers={memberHeaders} data={MOCK_CHIT_MEMBERS} renderRow={renderMemberRow} />
+            <Table headers={memberHeaders} data={members} renderRow={renderMemberRow} />
 
             {/* View Transactions Modal */}
             <Modal isOpen={isTxModalOpen} onClose={() => setTxModalOpen(false)} title={`Transactions for ${selectedMember?.name}`}>
@@ -102,22 +198,22 @@ const ChitDetailsPage: React.FC = () => {
             
             {/* Add Transaction Modal */}
             <Modal isOpen={isAddTxModalOpen} onClose={() => setAddTxModalOpen(false)} title={`Add Transaction for ${selectedMember?.name}`}>
-                <form>
+                <form onSubmit={handleAddTransaction}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
-                        <input type="date" className={formInputStyle} />
+                        <input type="date" name="date" value={formState.date || ''} onChange={handleFormChange} className={formInputStyle} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
-                        <input type="text" placeholder="e.g., August Installment" className={formInputStyle} />
+                        <input type="text" name="description" placeholder="e.g., August Installment" onChange={handleFormChange} className={formInputStyle} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Amount</label>
-                        <input type="number" className={formInputStyle} />
+                        <input type="number" name="amount" onChange={handleFormChange} className={formInputStyle} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Type</label>
-                        <select className={formInputStyle}>
+                        <select name="type" value={formState.type || 'Given'} onChange={handleFormChange} className={formInputStyle}>
                             <option>Given</option>
                             <option>Received</option>
                         </select>
@@ -131,22 +227,22 @@ const ChitDetailsPage: React.FC = () => {
             
             {/* Edit Member Modal */}
             <Modal isOpen={isEditMemberModalOpen} onClose={() => setEditMemberModalOpen(false)} title={`Edit Member: ${selectedMember?.name}`}>
-                 <form>
+                 <form onSubmit={handleUpdateMember}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Member Name</label>
-                        <input type="text" className={formInputStyle} defaultValue={selectedMember?.name} />
+                        <input type="text" name="name" className={formInputStyle} value={formState.name || ''} onChange={handleFormChange} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Phone Number</label>
-                        <input type="tel" className={formInputStyle} defaultValue={selectedMember?.phone} />
+                        <input type="tel" name="phone" className={formInputStyle} value={formState.phone || ''} onChange={handleFormChange}/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Email</label>
-                        <input type="email" className={formInputStyle} defaultValue={selectedMember?.email} />
+                        <input type="email" name="email" className={formInputStyle} value={formState.email || ''} onChange={handleFormChange}/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Address</label>
-                        <textarea className={formInputStyle} defaultValue={selectedMember?.address}></textarea>
+                        <textarea name="address" className={formInputStyle} value={formState.address || ''} onChange={handleFormChange}></textarea>
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setEditMemberModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
@@ -157,22 +253,22 @@ const ChitDetailsPage: React.FC = () => {
 
             {/* Add Member Modal */}
             <Modal isOpen={isAddMemberModalOpen} onClose={() => setIsAddMemberModalOpen(false)} title="Add New Member">
-                 <form>
+                 <form onSubmit={handleAddMember}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Member Name</label>
-                        <input type="text" placeholder="Enter full name" className={formInputStyle} />
+                        <input type="text" name="name" placeholder="Enter full name" className={formInputStyle} onChange={handleFormChange} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Phone Number</label>
-                        <input type="tel" placeholder="Enter 10-digit mobile number" className={formInputStyle} />
+                        <input type="tel" name="phone" placeholder="Enter 10-digit mobile number" className={formInputStyle} onChange={handleFormChange}/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Email</label>
-                        <input type="email" placeholder="Enter email address" className={formInputStyle} />
+                        <input type="email" name="email" placeholder="Enter email address" className={formInputStyle} onChange={handleFormChange}/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Address</label>
-                        <textarea placeholder="Enter full address" className={formInputStyle}></textarea>
+                        <textarea name="address" placeholder="Enter full address" className={formInputStyle} onChange={handleFormChange}></textarea>
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsAddMemberModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>

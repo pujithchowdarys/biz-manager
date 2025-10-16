@@ -1,54 +1,98 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { MOCK_CHITS, MOCK_CHIT_MEMBERS } from '../constants';
+import { supabase } from '../supabaseClient';
 import { Chit } from '../types';
 
 const ChitsPage: React.FC = () => {
-  const [chits] = useState<Chit[]>(MOCK_CHITS);
-  const [isLotteryModalOpen, setLotteryModalOpen] = useState(false);
+  const [chits, setChits] = useState<Chit[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddChitModalOpen, setIsAddChitModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedChit, setSelectedChit] = useState<Chit | null>(null);
-  const [winner, setWinner] = useState<string | null>(null);
-  const [spinning, setSpinning] = useState(false);
+  const [formState, setFormState] = useState<any>({});
   const navigate = useNavigate();
 
-  const handleLottery = (chit: Chit) => {
-    setSelectedChit(chit);
-    setLotteryModalOpen(true);
-    setWinner(null);
-  };
-  
-  const handleEdit = (chit: Chit) => {
-    setSelectedChit(chit);
-    setIsEditModalOpen(true);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    // This is a simplified fetch. A real implementation would need to
+    // fetch transactions and calculate totals, likely using an RPC call for performance.
+    const { data, error } = await supabase
+        .from('chits')
+        .select('*')
+        .order('name', { ascending: true });
+
+    if (error) {
+        console.error(error);
+    } else if (data) {
+        // Placeholder totals - a real implementation needs to aggregate transaction data
+        const chitsWithTotals = data.map(chit => ({
+            ...chit,
+            amountCollected: 0, // Calculate from transactions
+            amountGiven: 0,     // Calculate from transactions
+        }));
+        setChits(chitsWithTotals);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormState({ ...formState, [e.target.name]: e.target.value });
   };
 
-  const runLottery = () => {
-    setSpinning(true);
-    setWinner(null);
-    const potentialWinners = MOCK_CHIT_MEMBERS.filter(m => m.lotteryStatus === 'Pending');
-    setTimeout(() => {
-        if (potentialWinners.length > 0) {
-            const randomIndex = Math.floor(Math.random() * potentialWinners.length);
-            setWinner(potentialWinners[randomIndex].name);
-        } else {
-            setWinner("No eligible members");
-        }
-        setSpinning(false);
-    }, 3000);
+  const handleOpenModal = (modalSetter: React.Dispatch<React.SetStateAction<boolean>>, chit: Chit | null = null, initialFormState = {}) => {
+    setSelectedChit(chit);
+    setFormState(initialFormState);
+    modalSetter(true);
   };
+  
+  const handleAddChit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { error } = await supabase.from('chits').insert([{
+        name: formState.name,
+        total_value: parseFloat(formState.total_value),
+        members_count: parseInt(formState.members_count),
+        duration_months: parseInt(formState.duration_months),
+        status: 'Ongoing'
+    }]);
+    if (error) console.error(error);
+    else {
+        setIsAddChitModalOpen(false);
+        fetchData();
+    }
+  };
+
+  const handleUpdateChit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedChit) return;
+    const { error } = await supabase.from('chits').update({
+        name: formState.name,
+        total_value: parseFloat(formState.total_value),
+        members_count: parseInt(formState.members_count),
+        duration_months: parseInt(formState.duration_months),
+    }).eq('id', selectedChit.id);
+
+    if (error) console.error(error);
+    else {
+        setIsEditModalOpen(false);
+        fetchData();
+    }
+  };
+
 
   const tableHeaders = ['Chit Name', 'Total Value', 'Members', 'Collected', 'Given', 'Savings', 'Status', 'Actions'];
 
   const renderChitRow = (chit: Chit) => (
     <tr key={chit.id} className="border-b hover:bg-gray-50">
       <td className="p-4 font-medium text-textPrimary">{chit.name}</td>
-      <td className="p-4">₹{chit.totalValue.toLocaleString()}</td>
-      <td className="p-4">{chit.membersCount}</td>
+      <td className="p-4">₹{chit.total_value.toLocaleString()}</td>
+      <td className="p-4">{chit.members_count}</td>
       <td className="p-4 text-green-600">₹{chit.amountCollected.toLocaleString()}</td>
       <td className="p-4 text-red-600">₹{chit.amountGiven.toLocaleString()}</td>
       <td className="p-4 font-semibold text-blue-700">₹{(chit.amountCollected - chit.amountGiven).toLocaleString()}</td>
@@ -59,66 +103,51 @@ const ChitsPage: React.FC = () => {
       </td>
       <td className="p-4 space-x-2">
         <button onClick={() => navigate(`/chits/${chit.id}`)} className="text-primary hover:underline">Details</button>
-        <button onClick={() => handleEdit(chit)} className="text-yellow-600 hover:underline">Edit</button>
-        <button onClick={() => handleLottery(chit)} className="text-secondary hover:underline">Lottery</button>
+        <button onClick={() => handleOpenModal(setIsEditModalOpen, chit, { ...chit })} className="text-yellow-600 hover:underline">Edit</button>
+        <button className="text-secondary hover:underline disabled:text-gray-400" disabled>Lottery</button>
       </td>
     </tr>
   );
   
-  const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary";
+  const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
 
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6 text-textPrimary">Chits Management</h1>
+      
+      {/* Stat cards would also need to be calculated from fetched data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Active Chits" value={chits.filter(c => c.status === 'Ongoing').length.toString()} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} color="bg-yellow-500" />
-        <StatCard title="Total Collected" value={`₹${chits.reduce((s, c) => s + c.amountCollected, 0).toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} color="bg-green-500" />
-        <StatCard title="Total Given" value={`₹${chits.reduce((s, c) => s + c.amountGiven, 0).toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 15s-2 2-5 2-5-2-5-2" /></svg>} color="bg-red-500" />
-        <StatCard title="Total Savings" value={`₹${chits.reduce((s, c) => s + (c.amountCollected - c.amountGiven), 0).toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>} color="bg-blue-500" />
+        <StatCard title="Active Chits" value={loading ? '...' : chits.filter(c => c.status === 'Ongoing').length.toString()} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} color="bg-yellow-500" />
+        <StatCard title="Total Collected" value={'₹...'} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} color="bg-green-500" />
+        <StatCard title="Total Given" value={'₹...'} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 15s-2 2-5 2-5-2-5-2" /></svg>} color="bg-red-500" />
+        <StatCard title="Total Savings" value={'₹...'} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>} color="bg-blue-500" />
       </div>
 
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-semibold text-textPrimary">Chit Groups</h2>
-        <button onClick={() => setIsAddChitModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">+ Add Chit</button>
+        <button onClick={() => handleOpenModal(setIsAddChitModalOpen, null)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">+ Add Chit</button>
       </div>
 
-      <Table headers={tableHeaders} data={chits} renderRow={renderChitRow} />
-      
-      <Modal isOpen={isLotteryModalOpen} onClose={() => setLotteryModalOpen(false)} title={`Lottery for ${selectedChit?.name}`}>
-        <div className="text-center">
-            <h3 className="text-lg font-medium mb-4">Spin the wheel to select a winner!</h3>
-            <div className="relative w-48 h-48 mx-auto border-4 border-primary rounded-full flex items-center justify-center mb-4">
-                {spinning ? (
-                     <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-secondary"></div>
-                ) : (
-                    <span className="text-2xl font-bold text-primary">{winner ? winner : '?'}</span>
-                )}
-            </div>
-            {winner && !spinning && <p className="text-xl font-bold text-green-600 my-4">Congratulations {winner}!</p>}
-            <button onClick={runLottery} disabled={spinning} className="bg-secondary text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors disabled:bg-gray-400">
-                {spinning ? 'Spinning...' : 'Spin'}
-            </button>
-        </div>
-      </Modal>
+      {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={chits} renderRow={renderChitRow} />}
 
       {/* Edit Chit Modal */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Chit: ${selectedChit?.name}`}>
-          <form>
+          <form onSubmit={handleUpdateChit}>
               <div className="mb-4">
                   <label className="block text-sm font-medium text-textSecondary mb-1">Chit Name</label>
-                  <input type="text" className={formInputStyle} defaultValue={selectedChit?.name} />
+                  <input type="text" name="name" className={formInputStyle} value={formState.name || ''} onChange={handleFormChange} required/>
               </div>
               <div className="mb-4">
                   <label className="block text-sm font-medium text-textSecondary mb-1">Chit Value (₹)</label>
-                  <input type="number" className={formInputStyle} defaultValue={selectedChit?.totalValue} />
+                  <input type="number" name="total_value" className={formInputStyle} value={formState.total_value || ''} onChange={handleFormChange} required/>
               </div>
               <div className="mb-4">
                   <label className="block text-sm font-medium text-textSecondary mb-1">Number of Members</label>
-                  <input type="number" className={formInputStyle} defaultValue={selectedChit?.membersCount} />
+                  <input type="number" name="members_count" className={formInputStyle} value={formState.members_count || ''} onChange={handleFormChange} required/>
               </div>
               <div className="mb-4">
                   <label className="block text-sm font-medium text-textSecondary mb-1">Duration (months)</label>
-                  <input type="number" className={formInputStyle} defaultValue={selectedChit?.duration} />
+                  <input type="number" name="duration_months" className={formInputStyle} value={formState.duration_months || ''} onChange={handleFormChange} required/>
               </div>
               <div className="text-right">
                   <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
@@ -129,22 +158,22 @@ const ChitsPage: React.FC = () => {
 
        {/* Add Chit Modal */}
        <Modal isOpen={isAddChitModalOpen} onClose={() => setIsAddChitModalOpen(false)} title="Add New Chit">
-          <form>
+          <form onSubmit={handleAddChit}>
               <div className="mb-4">
                   <label className="block text-sm font-medium text-textSecondary mb-1">Chit Name</label>
-                  <input type="text" className={formInputStyle} placeholder="e.g., Monthly Savings Group"/>
+                  <input type="text" name="name" className={formInputStyle} placeholder="e.g., Monthly Savings Group" onChange={handleFormChange} required/>
               </div>
               <div className="mb-4">
                   <label className="block text-sm font-medium text-textSecondary mb-1">Chit Value (₹)</label>
-                  <input type="number" className={formInputStyle} placeholder="e.g., 50000" />
+                  <input type="number" name="total_value" className={formInputStyle} placeholder="e.g., 50000" onChange={handleFormChange} required/>
               </div>
               <div className="mb-4">
                   <label className="block text-sm font-medium text-textSecondary mb-1">Number of Members</label>
-                  <input type="number" className={formInputStyle} placeholder="e.g., 10" />
+                  <input type="number" name="members_count" className={formInputStyle} placeholder="e.g., 10" onChange={handleFormChange} required/>
               </div>
               <div className="mb-4">
                   <label className="block text-sm font-medium text-textSecondary mb-1">Duration (months)</label>
-                  <input type="number" className={formInputStyle} placeholder="e.g., 10" />
+                  <input type="number" name="duration_months" className={formInputStyle} placeholder="e.g., 10" onChange={handleFormChange} required/>
               </div>
               <div className="text-right">
                   <button type="button" onClick={() => setIsAddChitModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>

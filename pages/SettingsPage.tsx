@@ -1,39 +1,22 @@
-
 import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
 
 const SettingsPage: React.FC = () => {
-  const [apiKey, setApiKey] = useState('');
-  const [sheetsUrl, setSheetsUrl] = useState('');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const supabaseUrl = supabase.auth.getSession.toString().includes('evgvsqcmywfjgzytocmb') 
+    ? 'https://evgvsqcmywfjgzytocmb.supabase.co' 
+    : 'YOUR_SUPABASE_URL';
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleConnect = () => {
-    if (apiKey) {
-      showNotification('Database connected successfully!', 'success');
-    } else {
-      showNotification('API Key is required to connect.', 'error');
-    }
-  };
-
-  const handleBackup = () => {
-    if (sheetsUrl) {
-      showNotification('Data backup to Google Sheets initiated.', 'success');
-    } else {
-      showNotification('Google Sheets URL is required for backup.', 'error');
-    }
-  };
-
-  const handleRestore = () => {
-    if (sheetsUrl) {
-      showNotification('Data restore from Google Sheets initiated.', 'success');
-    } else {
-      showNotification('Google Sheets URL is required for restore.', 'error');
-    }
-  };
+  const handleCopy = () => {
+    navigator.clipboard.writeText(supabaseUrl);
+    showNotification('Supabase URL copied to clipboard!', 'success');
+  }
 
   return (
     <div>
@@ -46,36 +29,25 @@ const SettingsPage: React.FC = () => {
       )}
 
       <div className="space-y-8">
-        {/* Database Setup */}
+        {/* Database Info */}
         <div className="bg-surface p-6 rounded-xl shadow-md">
-          <h2 className="text-xl font-semibold text-textPrimary border-b pb-2 mb-4">Database Setup</h2>
+          <h2 className="text-xl font-semibold text-textPrimary border-b pb-2 mb-4">Database Connection</h2>
           <div className="space-y-4">
             <div>
-              <label htmlFor="api-key" className="block text-sm font-medium text-textSecondary mb-1">API Key for Database Connection</label>
-              <input 
-                type="text" 
-                id="api-key" 
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your database API key" 
-                className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
-              />
-            </div>
-            <div>
-              <label htmlFor="sheets-url" className="block text-sm font-medium text-textSecondary mb-1">Google Sheets URL for Backup/Restore</label>
-              <input 
-                type="url" 
-                id="sheets-url"
-                value={sheetsUrl}
-                onChange={(e) => setSheetsUrl(e.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/..." 
-                className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={handleConnect} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors">Connect Database</button>
-              <button onClick={handleBackup} className="bg-secondary text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors">Backup Data</button>
-              <button onClick={handleRestore} className="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors">Restore Data</button>
+              <label htmlFor="api-key" className="block text-sm font-medium text-textSecondary mb-1">Supabase Project URL</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  id="api-key" 
+                  value={supabaseUrl}
+                  readOnly
+                  className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                />
+                <button onClick={handleCopy} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors">Copy</button>
+              </div>
+               <p className="text-xs text-textSecondary mt-2">
+                 Your application is connected to this Supabase project. Connection details are managed in the `supabaseClient.ts` file.
+               </p>
             </div>
           </div>
         </div>
@@ -83,10 +55,10 @@ const SettingsPage: React.FC = () => {
         {/* Manage Account */}
         <div className="bg-surface p-6 rounded-xl shadow-md">
           <h2 className="text-xl font-semibold text-textPrimary border-b pb-2 mb-4">Manage Account</h2>
-          <p className="text-textSecondary">Logged in as: <span className="font-medium text-textPrimary">demo_user@businesspro.com</span></p>
+          <p className="text-textSecondary">This feature requires Supabase Auth to be implemented.</p>
           <div className="mt-4">
-            <button className="text-primary hover:underline">Change Password</button>
-            <button className="ml-4 text-red-600 hover:underline">Logout</button>
+            <button className="text-primary hover:underline" disabled>Change Password</button>
+            <button className="ml-4 text-red-600 hover:underline" disabled>Logout</button>
           </div>
         </div>
 

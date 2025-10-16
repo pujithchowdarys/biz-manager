@@ -1,40 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { MOCK_EXPENSES } from '../constants';
+import { supabase } from '../supabaseClient';
 import { Expense } from '../types';
 
 const HouseholdExpensesPage: React.FC = () => {
-    const [expenses, setExpenses] = useState<Expense[]>(MOCK_EXPENSES);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+    const [formState, setFormState] = useState<any>({});
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('expenses')
+            .select('*')
+            .order('expense_date', { ascending: false });
+        
+        if (error) console.error(error);
+        else setExpenses(data || []);
+        setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormState({ ...formState, [e.target.name]: e.target.value });
+    };
+    
+    const handleOpenModal = (modalSetter: React.Dispatch<React.SetStateAction<boolean>>, expense: Expense | null = null, initialFormState = {}) => {
+        setSelectedExpense(expense);
+        setFormState(initialFormState);
+        modalSetter(true);
+    };
+
+    const handleAddExpense = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const { error } = await supabase.from('expenses').insert([{
+            expense_date: formState.expense_date,
+            description: formState.description,
+            category: formState.category,
+            amount: parseFloat(formState.amount),
+            type: formState.type
+        }]);
+        if (error) console.error(error);
+        else {
+            setIsAddModalOpen(false);
+            fetchData();
+        }
+    };
+
+    const handleUpdateExpense = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedExpense) return;
+        const { error } = await supabase.from('expenses').update({
+            expense_date: formState.expense_date,
+            description: formState.description,
+            category: formState.category,
+            amount: parseFloat(formState.amount),
+            type: formState.type
+        }).eq('id', selectedExpense.id);
+        if (error) console.error(error);
+        else {
+            setIsEditModalOpen(false);
+            fetchData();
+        }
+    };
+
+    const handleRemove = async (expenseId: number) => {
+        if (window.confirm('Are you sure you want to remove this transaction?')) {
+            const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
+            if (error) console.error(error);
+            else fetchData();
+        }
+    };
 
     const overview = expenses.reduce((acc, curr) => {
         if (curr.type === 'Income') acc.totalIncome += curr.amount;
         else acc.totalExpenses += curr.amount;
         return acc;
     }, { totalIncome: 0, totalExpenses: 0 });
-
     const netBalance = overview.totalIncome - overview.totalExpenses;
-
-    const handleEdit = (expense: Expense) => {
-        setSelectedExpense(expense);
-        setIsEditModalOpen(true);
-    };
-
-    const handleRemove = (expenseId: number) => {
-        if (window.confirm('Are you sure you want to remove this transaction?')) {
-            setExpenses(expenses.filter(e => e.id !== expenseId));
-        }
-    };
 
     const tableHeaders = ['Date', 'Description', 'Category', 'Amount', 'Type', 'Actions'];
 
     const renderExpenseRow = (expense: Expense) => (
         <tr key={expense.id} className="border-b hover:bg-gray-50">
-            <td className="p-4 text-textSecondary">{expense.date}</td>
+            <td className="p-4 text-textSecondary">{expense.expense_date}</td>
             <td className="p-4 font-medium text-textPrimary">{expense.description}</td>
             <td className="p-4 text-textSecondary">{expense.category}</td>
             <td className={`p-4 font-semibold ${expense.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
@@ -46,13 +103,13 @@ const HouseholdExpensesPage: React.FC = () => {
                 </span>
             </td>
             <td className="p-4 space-x-2">
-                <button onClick={() => handleEdit(expense)} className="text-primary hover:underline">Edit</button>
+                <button onClick={() => handleOpenModal(setIsEditModalOpen, expense, { ...expense })} className="text-primary hover:underline">Edit</button>
                 <button onClick={() => handleRemove(expense.id)} className="text-red-600 hover:underline">Remove</button>
             </td>
         </tr>
     );
 
-    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary";
+    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
 
     return (
         <div>
@@ -65,75 +122,42 @@ const HouseholdExpensesPage: React.FC = () => {
 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-textPrimary">Transactions</h2>
-                <button onClick={() => setIsAddModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
+                <button onClick={() => handleOpenModal(setIsAddModalOpen, null, { expense_date: new Date().toISOString().split('T')[0], type: 'Expense' })} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
                     + Add Transaction
                 </button>
             </div>
 
-            <Table headers={tableHeaders} data={expenses} renderRow={renderExpenseRow} />
+            {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={expenses} renderRow={renderExpenseRow} />}
 
-            {/* Add Transaction Modal */}
-            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Transaction">
-                <form>
+            {/* Add/Edit Transaction Modal */}
+            <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} title={isEditModalOpen ? "Edit Transaction" : "Add New Transaction"}>
+                <form onSubmit={isEditModalOpen ? handleUpdateExpense : handleAddExpense}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
-                        <input type="date" className={formInputStyle} />
+                        <input type="date" name="expense_date" className={formInputStyle} value={formState.expense_date || ''} onChange={handleFormChange} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
-                        <input type="text" className={formInputStyle} />
+                        <input type="text" name="description" className={formInputStyle} value={formState.description || ''} onChange={handleFormChange} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Category</label>
-                        <input type="text" className={formInputStyle} />
+                        <input type="text" name="category" className={formInputStyle} value={formState.category || ''} onChange={handleFormChange}/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Amount</label>
-                        <input type="number" className={formInputStyle} />
+                        <input type="number" name="amount" className={formInputStyle} value={formState.amount || ''} onChange={handleFormChange} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Type</label>
-                        <select className={formInputStyle}>
+                        <select name="type" className={formInputStyle} value={formState.type || 'Expense'} onChange={handleFormChange}>
                             <option>Income</option>
                             <option>Expense</option>
                         </select>
                     </div>
                     <div className="text-right">
-                        <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save</button>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* Edit Transaction Modal */}
-            <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Transaction">
-                <form>
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
-                        <input type="date" className={formInputStyle} defaultValue={selectedExpense?.date} />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
-                        <input type="text" className={formInputStyle} defaultValue={selectedExpense?.description} />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-textSecondary mb-1">Category</label>
-                        <input type="text" className={formInputStyle} defaultValue={selectedExpense?.category} />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-textSecondary mb-1">Amount</label>
-                        <input type="number" className={formInputStyle} defaultValue={selectedExpense?.amount} />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-textSecondary mb-1">Type</label>
-                        <select className={formInputStyle} defaultValue={selectedExpense?.type}>
-                            <option>Income</option>
-                            <option>Expense</option>
-                        </select>
-                    </div>
-                    <div className="text-right">
-                        <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
+                        <button type="button" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">{isEditModalOpen ? 'Save Changes' : 'Save'}</button>
                     </div>
                 </form>
             </Modal>

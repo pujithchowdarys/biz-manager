@@ -1,9 +1,7 @@
-
 import React from 'react';
-import { NavItem, Customer, Chit, Expense, Loan, ChitMember, MemberTransaction, LoanTransaction } from './types';
+import { NavItem } from './types';
 
 // Icons
-// Fix: Update icon components to accept props, allowing className to be passed via React.cloneElement.
 const HomeIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>;
 const BusinessIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>;
 const ChitsIcon = (props: React.SVGProps<SVGSVGElement>) => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
@@ -21,72 +19,3 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/summary-report', name: 'Summary Report', icon: <ReportIcon /> },
   { path: '/settings', name: 'Settings', icon: <SettingsIcon /> },
 ];
-
-export const MOCK_CUSTOMERS: Customer[] = [
-    { id: 1, name: 'Ramesh Kumar', phone: '9876543210', address: '123 Main St, Delhi', totalGiven: 15000, totalReceived: 12000, status: 'Active' },
-    { id: 2, name: 'Sunita Devi', phone: '9876543211', address: '456 Oak Ave, Mumbai', totalGiven: 8000, totalReceived: 8000, status: 'Active' },
-    { id: 3, name: 'Anil Singh', phone: '9876543212', address: '789 Pine Ln, Kolkata', totalGiven: 20000, totalReceived: 15500, status: 'Active' },
-    { id: 4, name: 'Priya Sharma', phone: '9876543213', address: '101 Maple Dr, Chennai', totalGiven: 0, totalReceived: 0, status: 'Inactive' },
-];
-
-export const MOCK_CHITS: Chit[] = [
-    { id: 1, name: 'Friends Chit', totalValue: 100000, membersCount: 10, duration: 10, amountCollected: 80000, amountGiven: 70000, status: 'Ongoing' },
-    { id: 2, name: 'Family Group', totalValue: 50000, membersCount: 5, duration: 5, amountCollected: 45000, amountGiven: 40000, status: 'Ongoing' },
-    { id: 3, name: 'Office Chit', totalValue: 200000, membersCount: 20, duration: 10, amountCollected: 200000, amountGiven: 200000, status: 'Completed' },
-];
-
-export const MOCK_CHIT_MEMBERS: ChitMember[] = [
-    { id: 1, name: 'Amit', phone: '9123456780', email: 'amit@email.com', address: 'Flat 1, Building A', totalReceived: 0, totalGiven: 8000, lastTx: '2024-07-15', lotteryStatus: 'Pending' },
-    { id: 2, name: 'Bhavna', phone: '9123456781', email: 'bhavna@email.com', address: 'Flat 2, Building A', totalReceived: 10000, totalGiven: 8000, lastTx: '2024-06-20', lotteryStatus: 'Won' },
-    { id: 3, name: 'Chetan', phone: '9123456782', email: 'chetan@email.com', address: 'Flat 3, Building B', totalReceived: 0, totalGiven: 8000, lastTx: '2024-07-15', lotteryStatus: 'Pending' },
-    { id: 4, name: 'Divya', phone: '9123456783', email: 'divya@email.com', address: 'Flat 4, Building B', totalReceived: 0, totalGiven: 8000, lastTx: '2024-07-15', lotteryStatus: 'Pending' },
-];
-
-export const MOCK_MEMBER_TRANSACTIONS: { [memberId: number]: MemberTransaction[] } = {
-    1: [ // Amit's transactions
-        { id: 1, date: '2024-07-15', amount: 4000, type: 'Given', description: 'July Installment' },
-        { id: 2, date: '2024-06-15', amount: 4000, type: 'Given', description: 'June Installment' },
-    ],
-    2: [ // Bhavna's transactions
-        { id: 3, date: '2024-06-20', amount: 10000, type: 'Received', description: 'Lottery Win' },
-        { id: 4, date: '2024-07-15', amount: 4000, type: 'Given', description: 'July Installment' },
-        { id: 5, date: '2024-06-15', amount: 4000, type: 'Given', description: 'June Installment' },
-    ],
-    3: [],
-    4: [],
-};
-
-export const MOCK_EXPENSES: Expense[] = [
-    { id: 1, date: '2024-07-22', description: 'Salary', category: 'Income', amount: 25000, type: 'Income' },
-    { id: 2, date: '2024-07-21', description: 'Groceries', category: 'Food', amount: 4500, type: 'Expense' },
-    { id: 3, date: '2024-07-20', description: 'Electricity Bill', category: 'Utilities', amount: 1260, type: 'Expense' },
-    { id: 4, date: '2024-07-18', description: 'Rent', category: 'Housing', amount: 10000, type: 'Expense' },
-    { id: 5, date: '2024-07-15', description: 'Internet Bill', category: 'Utilities', amount: 800, type: 'Expense' },
-    { id: 6, date: '2024-07-12', description: 'Dinner Out', category: 'Entertainment', amount: 2000, type: 'Expense' },
-];
-
-export const MOCK_LOANS: Loan[] = [
-    { id: 1, name: 'Home Loan', principal: 50000, interestRate: 8.5, duration: 24, paid: 20000, type: 'Taken', status: 'Active' },
-    { id: 2, name: 'Loan to Friend', principal: 25000, interestRate: 12, duration: 12, paid: 10000, type: 'Given', status: 'Active' },
-    { id: 3, name: 'Car Loan', principal: 10000, interestRate: 10, duration: 18, paid: 10000, type: 'Taken', status: 'Paid Off' },
-];
-
-export const MOCK_LOAN_TRANSACTIONS: { [loanId: number]: LoanTransaction[] } = {
-    1: [
-        { id: 1, date: '2024-07-05', amount: 2500, description: 'July EMI', type: 'Payment' },
-        { id: 2, date: '2024-06-05', amount: 2500, description: 'June EMI', type: 'Payment' },
-        { id: 3, date: '2024-01-01', amount: 50000, description: 'Loan Disbursed', type: 'Disbursement' },
-    ],
-    2: [
-        { id: 4, date: '2024-07-10', amount: 5000, description: 'Received payment', type: 'Payment' },
-        { id: 5, date: '2024-05-15', amount: 25000, description: 'Loan Given', type: 'Disbursement' },
-    ],
-    3: [],
-};
-
-export const SUMMARY_DATA = {
-    business: { totalGiven: 43000, totalReceived: 35500, balance: 7500 },
-    chits: { totalValue: 150000, amountCollected: 125000, amountGiven: 110000, savings: 15000 },
-    household: { totalIncome: 25000, totalExpenses: 18560, net: 6440 },
-    loans: { totalTaken: 50000, totalGiven: 25000, balanceToPay: 30000, balanceToReceive: 15000 }
-};

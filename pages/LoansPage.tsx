@@ -1,17 +1,116 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { MOCK_LOANS, MOCK_LOAN_TRANSACTIONS } from '../constants';
+import { supabase } from '../supabaseClient';
 import { Loan, LoanTransaction } from '../types';
 
 const LoansPage: React.FC = () => {
-    const [loans] = useState<Loan[]>(MOCK_LOANS);
+    const [loans, setLoans] = useState<Loan[]>([]);
+    const [transactions, setTransactions] = useState<LoanTransaction[]>([]);
+    const [loading, setLoading] = useState(true);
+
     const [isAddLoanModalOpen, setIsAddLoanModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isViewTxModalOpen, setIsViewTxModalOpen] = useState(false);
     const [isAddPaymentModalOpen, setIsAddPaymentModalOpen] = useState(false);
+    
     const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+    const [formState, setFormState] = useState<any>({});
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        const { data: loansData, error: loansError } = await supabase.from('loans').select('*').order('name');
+        const { data: txData, error: txError } = await supabase.from('loan_transactions').select('*');
+
+        if (loansError || txError) {
+            console.error(loansError || txError);
+        } else if (loansData && txData) {
+            setTransactions(txData);
+            const loansWithTotals = loansData.map(loan => {
+                const paid = txData
+                    .filter(tx => tx.loan_id === loan.id && tx.type === 'Payment')
+                    .reduce((sum, tx) => sum + tx.amount, 0);
+                return { ...loan, paid };
+            });
+            setLoans(loansWithTotals);
+        }
+        setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormState({ ...formState, [e.target.name]: e.target.value });
+    };
+
+    const handleOpenModal = (modalSetter: React.Dispatch<React.SetStateAction<boolean>>, loan: Loan | null = null, initialFormState = {}) => {
+        setSelectedLoan(loan);
+        setFormState(initialFormState);
+        modalSetter(true);
+    };
+
+    const handleAddLoan = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const { data, error } = await supabase.from('loans').insert([{
+            name: formState.name,
+            principal: parseFloat(formState.principal),
+            type: formState.type,
+            interest_rate: parseFloat(formState.interest_rate),
+            duration_months: parseInt(formState.duration_months),
+            status: 'Active'
+        }]).select();
+
+        if (error) console.error(error);
+        else if (data) {
+            // Add the initial disbursement transaction
+            await supabase.from('loan_transactions').insert([{
+                loan_id: data[0].id,
+                date: new Date().toISOString().split('T')[0],
+                amount: parseFloat(formState.principal),
+                description: 'Loan Disbursement',
+                type: 'Disbursement'
+            }]);
+            setIsAddLoanModalOpen(false);
+            fetchData();
+        }
+    };
+    
+    const handleUpdateLoan = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!selectedLoan) return;
+        const { error } = await supabase.from('loans').update({
+            name: formState.name,
+            interest_rate: parseFloat(formState.interest_rate),
+            duration_months: parseInt(formState.duration_months),
+        }).eq('id', selectedLoan.id);
+        
+        if (error) console.error(error);
+        else {
+            setIsEditModalOpen(false);
+            fetchData();
+        }
+    }
+
+    const handleAddPayment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedLoan) return;
+        const { error } = await supabase.from('loan_transactions').insert([{
+            loan_id: selectedLoan.id,
+            date: formState.date,
+            amount: parseFloat(formState.amount),
+            description: formState.description,
+            type: 'Payment'
+        }]);
+
+        if (error) console.error(error);
+        else {
+            setIsAddPaymentModalOpen(false);
+            fetchData();
+        }
+    };
 
     const overview = loans.reduce((acc, curr) => {
         if (curr.type === 'Taken') acc.loansTaken++;
@@ -20,21 +119,6 @@ const LoansPage: React.FC = () => {
         acc.balanceLeft += (curr.principal - curr.paid);
         return acc;
     }, { loansTaken: 0, loansGiven: 0, amountPaid: 0, balanceLeft: 0 });
-
-    const handleEdit = (loan: Loan) => {
-        setSelectedLoan(loan);
-        setIsEditModalOpen(true);
-    };
-
-    const handleView = (loan: Loan) => {
-        setSelectedLoan(loan);
-        setIsViewTxModalOpen(true);
-    };
-    
-    const handleAddPayment = (loan: Loan) => {
-        setSelectedLoan(loan);
-        setIsAddPaymentModalOpen(true);
-    };
 
     const tableHeaders = ['Loan Name', 'Principal', 'Paid', 'Balance', 'Type', 'Status', 'Actions'];
 
@@ -55,15 +139,15 @@ const LoansPage: React.FC = () => {
                 </span>
             </td>
             <td className="p-4 space-x-2">
-                <button onClick={() => handleView(loan)} className="text-primary hover:underline">View</button>
-                <button onClick={() => handleEdit(loan)} className="text-yellow-600 hover:underline">Edit</button>
-                <button onClick={() => handleAddPayment(loan)} className="text-blue-600 hover:underline">Add Payment</button>
+                <button onClick={() => handleOpenModal(setIsViewTxModalOpen, loan)} className="text-primary hover:underline">View</button>
+                <button onClick={() => handleOpenModal(setIsEditModalOpen, loan, { ...loan })} className="text-yellow-600 hover:underline">Edit</button>
+                <button onClick={() => handleOpenModal(setIsAddPaymentModalOpen, loan, { date: new Date().toISOString().split('T')[0] })} className="text-blue-600 hover:underline">Add Payment</button>
             </td>
         </tr>
     );
 
-    const loanTransactions = selectedLoan ? MOCK_LOAN_TRANSACTIONS[selectedLoan.id] || [] : [];
-    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary";
+    const loanTransactions = selectedLoan ? transactions.filter(tx => tx.loan_id === selectedLoan.id) : [];
+    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
 
     return (
         <div>
@@ -77,31 +161,27 @@ const LoansPage: React.FC = () => {
 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-textPrimary">All Loans</h2>
-                <button onClick={() => setIsAddLoanModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
+                <button onClick={() => handleOpenModal(setIsAddLoanModalOpen, null, { type: 'Taken' })} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
                     + Add Loan
                 </button>
             </div>
 
-            <Table headers={tableHeaders} data={loans} renderRow={renderLoanRow} />
+            {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={loans} renderRow={renderLoanRow} />}
 
             {/* Edit Loan Modal */}
             <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Loan: ${selectedLoan?.name}`}>
-                 <form>
+                 <form onSubmit={handleUpdateLoan}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Loan Name</label>
-                        <input type="text" className={formInputStyle} defaultValue={selectedLoan?.name} />
-                    </div>
-                     <div className="mb-4">
-                        <label className="block text-sm font-medium text-textSecondary mb-1">Principal Amount</label>
-                        <input type="number" className={formInputStyle} defaultValue={selectedLoan?.principal} />
+                        <input type="text" name="name" className={formInputStyle} value={formState.name || ''} onChange={handleFormChange} required/>
                     </div>
                      <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Interest Rate (%)</label>
-                        <input type="number" step="0.1" className={formInputStyle} defaultValue={selectedLoan?.interestRate} />
+                        <input type="number" step="0.1" name="interest_rate" className={formInputStyle} value={formState.interest_rate || ''} onChange={handleFormChange}/>
                     </div>
                      <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Duration (months)</label>
-                        <input type="number" className={formInputStyle} defaultValue={selectedLoan?.duration} />
+                        <input type="number" name="duration_months" className={formInputStyle} value={formState.duration_months || ''} onChange={handleFormChange}/>
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
@@ -112,29 +192,29 @@ const LoansPage: React.FC = () => {
 
             {/* Add Loan Modal */}
             <Modal isOpen={isAddLoanModalOpen} onClose={() => setIsAddLoanModalOpen(false)} title="Add New Loan">
-                 <form>
+                 <form onSubmit={handleAddLoan}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Loan Name</label>
-                        <input type="text" className={formInputStyle} placeholder="e.g., Personal Loan" />
+                        <input type="text" name="name" className={formInputStyle} placeholder="e.g., Personal Loan" onChange={handleFormChange} required/>
                     </div>
                      <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Loan Amount (₹)</label>
-                        <input type="number" className={formInputStyle} placeholder="e.g., 25000" />
+                        <input type="number" name="principal" className={formInputStyle} placeholder="e.g., 25000" onChange={handleFormChange} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Loan Type</label>
-                        <select className={formInputStyle}>
+                        <select name="type" className={formInputStyle} value={formState.type} onChange={handleFormChange}>
                             <option>Taken</option>
                             <option>Given</option>
                         </select>
                     </div>
                      <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Interest Rate (%)</label>
-                        <input type="number" step="0.1" className={formInputStyle} placeholder="e.g., 12.5" />
+                        <input type="number" step="0.1" name="interest_rate" className={formInputStyle} placeholder="e.g., 12.5" onChange={handleFormChange}/>
                     </div>
                      <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Duration (months)</label>
-                        <input type="number" className={formInputStyle} placeholder="e.g., 24" />
+                        <input type="number" name="duration_months" className={formInputStyle} placeholder="e.g., 24" onChange={handleFormChange}/>
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsAddLoanModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
@@ -165,18 +245,18 @@ const LoansPage: React.FC = () => {
 
             {/* Add Payment Modal */}
             <Modal isOpen={isAddPaymentModalOpen} onClose={() => setIsAddPaymentModalOpen(false)} title={`Add Payment for ${selectedLoan?.name}`}>
-                 <form>
+                 <form onSubmit={handleAddPayment}>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
-                        <input type="date" className={formInputStyle} />
+                        <input type="date" name="date" className={formInputStyle} value={formState.date || ''} onChange={handleFormChange} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Amount (₹)</label>
-                        <input type="number" className={formInputStyle} placeholder="Enter amount" />
+                        <input type="number" name="amount" className={formInputStyle} placeholder="Enter amount" onChange={handleFormChange} required/>
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
-                        <input type="text" className={formInputStyle} placeholder="e.g., Monthly EMI" />
+                        <input type="text" name="description" className={formInputStyle} placeholder="e.g., Monthly EMI" onChange={handleFormChange} required/>
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsAddPaymentModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>

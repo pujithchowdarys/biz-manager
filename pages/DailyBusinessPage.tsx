@@ -32,6 +32,7 @@ const DailyBusinessPage: React.FC = () => {
         if (customersError || transactionsError) {
             console.error(customersError || transactionsError);
         } else if (customersData && transactionsData) {
+            setTransactions(transactionsData);
             const customersWithTotals = customersData.map(customer => {
                 const txs = transactionsData.filter(tx => tx.customer_id === customer.id);
                 const totalGiven = txs.filter(t => t.type === 'Given').reduce((sum, t) => sum + t.amount, 0);
@@ -136,6 +137,12 @@ const DailyBusinessPage: React.FC = () => {
 
     const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
 
+    const customerTransactions = selectedCustomer
+        ? transactions
+            .filter(tx => tx.customer_id === selectedCustomer.id)
+            .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        : [];
+
     return (
         <div>
             <h1 className="text-3xl font-bold mb-6 text-textPrimary">Daily Business</h1>
@@ -156,8 +163,23 @@ const DailyBusinessPage: React.FC = () => {
 
             {/* View Transactions Modal */}
             <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`Transactions for ${selectedCustomer?.name}`}>
-                {/* Content to be implemented */}
-                <p>Transaction history functionality to be added.</p>
+                {customerTransactions.length > 0 ? (
+                    <ul className="space-y-2 max-h-80 overflow-y-auto">
+                        {customerTransactions.map(tx => (
+                            <li key={tx.id} className="p-3 border rounded-md flex justify-between items-center bg-gray-50">
+                                <div>
+                                    <p className="font-medium text-textPrimary">{tx.description || 'Transaction'}</p>
+                                    <p className="text-sm text-textSecondary">{new Date(tx.date).toLocaleDateString()}</p>
+                                </div>
+                                <span className={`font-semibold text-lg ${tx.type === 'Received' ? 'text-red-600' : 'text-green-600'}`}>
+                                    {tx.type === 'Received' ? '-' : '+'}₹{tx.amount.toLocaleString()}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p>No transactions found for this customer.</p>
+                )}
             </Modal>
             
             {/* Edit Customer Modal */}

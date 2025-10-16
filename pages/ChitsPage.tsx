@@ -13,29 +13,63 @@ const ChitsPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedChit, setSelectedChit] = useState<Chit | null>(null);
   const [formState, setFormState] = useState<any>({});
+  const [overview, setOverview] = useState({ totalCollected: 0, totalGiven: 0, totalSavings: 0 });
   const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    // This is a simplified fetch. A real implementation would need to
-    // fetch transactions and calculate totals, likely using an RPC call for performance.
-    const { data, error } = await supabase
+    try {
+      const { data: chitsData, error: chitsError } = await supabase
         .from('chits')
-        .select('*')
+        .select(`
+            *,
+            chit_members (
+                chit_transactions (
+                    type,
+                    amount
+                )
+            )
+        `)
         .order('name', { ascending: true });
 
-    if (error) {
-        console.error(error);
-    } else if (data) {
-        // Placeholder totals - a real implementation needs to aggregate transaction data
-        const chitsWithTotals = data.map(chit => ({
-            ...chit,
-            amountCollected: 0, // Calculate from transactions
-            amountGiven: 0,     // Calculate from transactions
-        }));
-        setChits(chitsWithTotals);
+      if (chitsError) throw chitsError;
+
+      if (chitsData) {
+        const chitsWithTotals = chitsData.map(chit => {
+          let amountCollected = 0;
+          let amountGiven = 0;
+
+          const members = (chit.chit_members as any[]) || [];
+          members.forEach(member => {
+            const transactions = (member.chit_transactions as any[]) || [];
+            transactions.forEach(tx => {
+              if (tx.type === 'Given') {
+                amountCollected += tx.amount;
+              } else if (tx.type === 'Received') {
+                amountGiven += tx.amount;
+              }
+            });
+          });
+          
+          const { chit_members, ...restOfChit } = chit;
+          return { ...restOfChit, amountCollected, amountGiven };
+        });
+        
+        setChits(chitsWithTotals as Chit[]);
+
+        const totalCollected = chitsWithTotals.reduce((sum, c) => sum + c.amountCollected, 0);
+        const totalGiven = chitsWithTotals.reduce((sum, c) => sum + c.amountGiven, 0);
+        setOverview({
+            totalCollected,
+            totalGiven,
+            totalSavings: totalCollected - totalGiven,
+        });
+      }
+    } catch (error: any) {
+        console.error("Error fetching chits data:", error.message || error);
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -115,12 +149,11 @@ const ChitsPage: React.FC = () => {
     <div>
       <h1 className="text-3xl font-bold mb-6 text-textPrimary">Chits Management</h1>
       
-      {/* Stat cards would also need to be calculated from fetched data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard title="Active Chits" value={loading ? '...' : chits.filter(c => c.status === 'Ongoing').length.toString()} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} color="bg-yellow-500" />
-        <StatCard title="Total Collected" value={'₹...'} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} color="bg-green-500" />
-        <StatCard title="Total Given" value={'₹...'} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 15s-2 2-5 2-5-2-5-2" /></svg>} color="bg-red-500" />
-        <StatCard title="Total Savings" value={'₹...'} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>} color="bg-blue-500" />
+        <StatCard title="Total Collected" value={loading ? '₹...' : `₹${overview.totalCollected.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} color="bg-green-500" />
+        <StatCard title="Total Given" value={loading ? '₹...' : `₹${overview.totalGiven.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 15s-2 2-5 2-5-2-5-2" /></svg>} color="bg-red-500" />
+        <StatCard title="Total Savings" value={loading ? '₹...' : `₹${overview.totalSavings.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>} color="bg-blue-500" />
       </div>
 
       <div className="flex justify-between items-center mb-4">

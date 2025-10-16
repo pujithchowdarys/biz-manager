@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabaseUrl } from '../supabaseClient';
 
 const SettingsPage: React.FC = () => {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  const supabaseUrl = supabase.auth.getSession.toString().includes('evgvsqcmywfjgzytocmb') 
-    ? 'https://evgvsqcmywfjgzytocmb.supabase.co' 
-    : 'YOUR_SUPABASE_URL';
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });

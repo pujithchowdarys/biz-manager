@@ -31,7 +31,8 @@ const SummaryReportPage: React.FC = () => {
                 supabase.from('customer_transactions').select('type, amount'),
                 supabase.from('chits').select('total_value'), // Simplified chits summary
                 supabase.from('expenses').select('type, amount'),
-                supabase.from('loans').select('type, principal'),
+                // FIX: Added 'id' to the select query to allow matching loan transactions.
+                supabase.from('loans').select('id, type, principal'),
                 supabase.from('loan_transactions').select('loan_id, type, amount'),
             ]);
 
@@ -118,8 +119,8 @@ const SummaryReportPage: React.FC = () => {
     }
     
     const businessChartData = [
-        { name: 'Given', value: summaryData.business.totalGiven, fill: '#EF4444' },
-        { name: 'Received', value: summaryData.business.totalReceived, fill: '#22C55E' },
+        { name: 'Given', value: summaryData.business.totalGiven, fill: '#22C55E' },
+        { name: 'Received', value: summaryData.business.totalReceived, fill: '#EF4444' },
     ];
     
     const householdChartData = [
@@ -154,7 +155,11 @@ const SummaryReportPage: React.FC = () => {
                             <YAxis tickFormatter={(value) => `₹${Number(value) / 1000}k`} />
                             <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Amount']} />
                             <Legend />
-                            <Bar dataKey="value" name="Amount" fill="#3B82F6" />
+                            <Bar dataKey="value" name="Amount">
+                                {businessChartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                            </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

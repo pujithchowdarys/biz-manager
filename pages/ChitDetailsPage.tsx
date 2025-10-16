@@ -25,44 +25,47 @@ const ChitDetailsPage: React.FC = () => {
         if (!chitId) return;
         setLoading(true);
 
-        const { data: chitData, error: chitError } = await supabase
-            .from('chits')
-            .select('*')
-            .eq('id', chitId)
-            .single();
+        try {
+            const { data: chitData, error: chitError } = await supabase
+                .from('chits')
+                .select(`
+                    *,
+                    chit_members (
+                        *,
+                        chit_transactions (*)
+                    )
+                `)
+                .eq('id', chitId)
+                .single();
 
-        const { data: membersData, error: membersError } = await supabase
-            .from('chit_members')
-            .select('*')
-            .eq('chit_id', chitId);
+            if (chitError) throw chitError;
 
-        if (chitError || membersError) {
-            console.error(chitError || membersError);
+            if (chitData) {
+                const allTransactions: ChitTransaction[] = [];
+                const membersWithTotals = ((chitData.chit_members as any[]) || []).map(member => {
+                    const memberTxs = (member.chit_transactions as ChitTransaction[]) || [];
+                    allTransactions.push(...memberTxs);
+                    
+                    const totalGiven = memberTxs.filter(t => t.type === 'Given').reduce((s, t) => s + t.amount, 0);
+                    const totalReceived = memberTxs.filter(t => t.type === 'Received').reduce((s, t) => s + t.amount, 0);
+                    const lastTx = memberTxs.length > 0 ? memberTxs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : 'N/A';
+                    
+                    const { chit_transactions, ...restOfMember } = member;
+                    return { ...restOfMember, totalGiven, totalReceived, lastTx };
+                });
+                
+                const { chit_members, ...restOfChit } = chitData;
+
+                setChit(restOfChit as Chit);
+                setMembers(membersWithTotals as ChitMember[]);
+                setTransactions(allTransactions);
+            }
+
+        } catch (error: any) {
+            console.error("Error fetching chit details:", error.message || error);
+        } finally {
             setLoading(false);
-            return;
         }
-
-        const memberIds = membersData.map(m => m.id);
-        const { data: txData, error: txError } = await supabase
-            .from('chit_transactions')
-            .select('*')
-            .in('member_id', memberIds);
-
-        if (txError) {
-            console.error(txError);
-        } else {
-            setChit(chitData);
-            setTransactions(txData || []);
-            const membersWithTotals = membersData.map(member => {
-                const memberTxs = (txData || []).filter(tx => tx.member_id === member.id);
-                const totalGiven = memberTxs.filter(t => t.type === 'Given').reduce((s, t) => s + t.amount, 0);
-                const totalReceived = memberTxs.filter(t => t.type === 'Received').reduce((s, t) => s + t.amount, 0);
-                const lastTx = memberTxs.length > 0 ? memberTxs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : 'N/A';
-                return { ...member, totalGiven, totalReceived, lastTx };
-            });
-            setMembers(membersWithTotals);
-        }
-        setLoading(false);
     }, [chitId]);
 
     useEffect(() => {
@@ -139,13 +142,13 @@ const ChitDetailsPage: React.FC = () => {
         );
     }
 
-    const memberHeaders = ['Member Name', 'Total Received', 'Total Given', 'Last Transaction', 'Lottery Status', 'Actions'];
+    const memberHeaders = ['Member Name', 'Total Given', 'Total Received', 'Last Transaction', 'Lottery Status', 'Actions'];
   
     const renderMemberRow = (member: ChitMember) => (
          <tr key={member.id} className="border-b hover:bg-gray-50">
             <td className="p-4 font-medium text-textPrimary">{member.name}</td>
-            <td className="p-4 text-green-600">₹{member.totalReceived.toLocaleString()}</td>
-            <td className="p-4 text-red-600">₹{member.totalGiven.toLocaleString()}</td>
+            <td className="p-4 text-green-600">₹{member.totalGiven.toLocaleString()}</td>
+            <td className="p-4 text-red-600">₹{member.totalReceived.toLocaleString()}</td>
             <td className="p-4">{member.lastTx}</td>
             <td className="p-4">
                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${member.lottery_status === 'Won' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{member.lottery_status}</span>
@@ -185,8 +188,8 @@ const ChitDetailsPage: React.FC = () => {
                                 <div>
                                     <p className="font-medium">{tx.description} <span className="text-xs text-textSecondary">({tx.date})</span></p>
                                 </div>
-                                <span className={`font-semibold ${tx.type === 'Given' ? 'text-red-600' : 'text-green-600'}`}>
-                                    {tx.type === 'Given' ? '-' : '+'}₹{tx.amount.toLocaleString()}
+                                <span className={`font-semibold ${tx.type === 'Given' ? 'text-green-600' : 'text-red-600'}`}>
+                                    {tx.type === 'Given' ? '+' : '-'}₹{tx.amount.toLocaleString()}
                                 </span>
                             </li>
                         ))}
@@ -205,7 +208,7 @@ const ChitDetailsPage: React.FC = () => {
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
-                        <input type="text" name="description" placeholder="e.g., August Installment" onChange={handleFormChange} className={formInputStyle} />
+                        <input type="text" name="description" placeholder="e.g., August Installment" value={formState.description || ''} onChange={handleFormChange} className={formInputStyle} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Amount</label>

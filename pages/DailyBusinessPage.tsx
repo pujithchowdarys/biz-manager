@@ -2,16 +2,42 @@ import React, { useState } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { MOCK_CUSTOMERS } from '../constants';
+import { useEffect } from 'react'; // React's hook for side effects
+import { supabase } from '../supabaseClient'; // Our new client
 import { Customer } from '../types';
 
 const DailyBusinessPage: React.FC = () => {
-    const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
+    //const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
     const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+    const [customers, setCustomers] = useState<Customer[]>([]); // Start with an empty array
+    const [loading, setLoading] = useState(true);
+
+    async function getCustomers() {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('customers') // The name of your table
+            .select('*'); // Get all columns
+
+        if (error) {
+            console.warn(error);
+        } else if (data) {
+            // Here you would need to calculate totals, as they are not in the DB
+            // For now, let's just add placeholder values
+            const customersWithTotals = data.map(c => ({...c, totalGiven: 0, totalReceived: 0}));
+            setCustomers(customersWithTotals);
+        }
+        setLoading(false);
+    }
+
+    useEffect(() => {
+        getCustomers();
+    }, []);
+    
 
     const overview = customers.reduce((acc, curr) => {
         acc.totalGiven += curr.totalGiven;

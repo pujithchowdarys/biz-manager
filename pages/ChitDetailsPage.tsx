@@ -3,7 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
 import { MOCK_CHITS, MOCK_CHIT_MEMBERS, MOCK_MEMBER_TRANSACTIONS } from '../constants';
+import { useEffect } from 'react'; // React's hook for side effects
+import { supabase } from '../supabaseClient'; // Our new client
 import { ChitMember, MemberTransaction } from '../types';
+
 
 const ChitDetailsPage: React.FC = () => {
     const { chitId } = useParams<{ chitId: string }>();

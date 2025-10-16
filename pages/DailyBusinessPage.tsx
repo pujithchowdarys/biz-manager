@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
@@ -10,6 +9,8 @@ const DailyBusinessPage: React.FC = () => {
     const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
+    const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
     const overview = customers.reduce((acc, curr) => {
@@ -30,6 +31,11 @@ const DailyBusinessPage: React.FC = () => {
         setIsEditModalOpen(true);
     };
 
+    const handleAddTransaction = (customer: Customer) => {
+        setSelectedCustomer(customer);
+        setIsAddTxModalOpen(true);
+    }
+
     const tableHeaders = ['Customer Name', 'Total Given', 'Total Received', 'Balance', 'Status', 'Actions'];
 
     const renderCustomerRow = (customer: Customer) => (
@@ -48,10 +54,12 @@ const DailyBusinessPage: React.FC = () => {
             <td className="p-4 space-x-2">
                 <button onClick={() => handleView(customer)} className="text-primary hover:underline">View</button>
                 <button onClick={() => handleEdit(customer)} className="text-yellow-600 hover:underline">Edit</button>
-                <button className="text-blue-600 hover:underline">Add Tx</button>
+                <button onClick={() => handleAddTransaction(customer)} className="text-blue-600 hover:underline">Add Tx</button>
             </td>
         </tr>
     );
+
+    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary";
 
     return (
         <div>
@@ -64,13 +72,14 @@ const DailyBusinessPage: React.FC = () => {
 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-textPrimary">Customers</h2>
-                <button className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
+                <button onClick={() => setIsAddCustomerModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
                     + Add Customer
                 </button>
             </div>
             
             <Table headers={tableHeaders} data={customers} renderRow={renderCustomerRow} />
 
+            {/* View Transactions Modal */}
             <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`Transactions for ${selectedCustomer?.name}`}>
                 <p>This is where the transaction history for {selectedCustomer?.name} would be displayed.</p>
                  <div className="mt-4 text-sm">
@@ -80,15 +89,24 @@ const DailyBusinessPage: React.FC = () => {
                 </div>
             </Modal>
             
+            {/* Edit Customer Modal */}
             <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Customer: ${selectedCustomer?.name}`}>
                  <form>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Customer Name</label>
-                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={selectedCustomer?.name} />
+                        <input type="text" className={formInputStyle} defaultValue={selectedCustomer?.name} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Phone Number</label>
+                        <input type="text" className={formInputStyle} defaultValue={selectedCustomer?.phone} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Address</label>
+                        <input type="text" className={formInputStyle} defaultValue={selectedCustomer?.address} />
                     </div>
                      <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Status</label>
-                        <select className="w-full p-2 border rounded-md" defaultValue={selectedCustomer?.status}>
+                        <select className={formInputStyle} defaultValue={selectedCustomer?.status}>
                             <option>Active</option>
                             <option>Inactive</option>
                         </select>
@@ -96,6 +114,57 @@ const DailyBusinessPage: React.FC = () => {
                     <div className="text-right">
                         <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Add Customer Modal */}
+            <Modal isOpen={isAddCustomerModalOpen} onClose={() => setIsAddCustomerModalOpen(false)} title="Add New Customer">
+                 <form>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Customer Name</label>
+                        <input type="text" className={formInputStyle} placeholder="Enter full name" />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Phone Number</label>
+                        <input type="tel" className={formInputStyle} placeholder="Enter 10-digit mobile number" />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Address</label>
+                        <textarea className={formInputStyle} placeholder="Enter full address"></textarea>
+                    </div>
+                    <div className="text-right">
+                        <button type="button" onClick={() => setIsAddCustomerModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Add Customer</button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Add Transaction Modal */}
+            <Modal isOpen={isAddTxModalOpen} onClose={() => setIsAddTxModalOpen(false)} title={`Add Transaction for ${selectedCustomer?.name}`}>
+                 <form>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
+                        <input type="date" className={formInputStyle} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Amount (₹)</label>
+                        <input type="number" className={formInputStyle} placeholder="Enter amount" />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
+                        <input type="text" className={formInputStyle} placeholder="e.g., Goods purchased" />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Transaction Type</label>
+                        <select className={formInputStyle}>
+                            <option>Given</option>
+                            <option>Taken</option>
+                        </select>
+                    </div>
+                    <div className="text-right">
+                        <button type="button" onClick={() => setIsAddTxModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Transaction</button>
                     </div>
                 </form>
             </Modal>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Table from '../components/Table';
@@ -13,6 +12,7 @@ const ChitDetailsPage: React.FC = () => {
     const [isTxModalOpen, setTxModalOpen] = useState(false);
     const [isAddTxModalOpen, setAddTxModalOpen] = useState(false);
     const [isEditMemberModalOpen, setEditMemberModalOpen] = useState(false);
+    const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
     const [selectedMember, setSelectedMember] = useState<ChitMember | null>(null);
 
     const handleViewTransactions = (member: ChitMember) => {
@@ -60,6 +60,7 @@ const ChitDetailsPage: React.FC = () => {
     );
 
     const memberTransactions = selectedMember ? MOCK_MEMBER_TRANSACTIONS[selectedMember.id] || [] : [];
+    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary";
 
     return (
         <div>
@@ -69,7 +70,7 @@ const ChitDetailsPage: React.FC = () => {
             
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-textPrimary">Members</h2>
-                <button className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
+                <button onClick={() => setIsAddMemberModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
                     + Add Member
                 </button>
             </div>
@@ -101,19 +102,19 @@ const ChitDetailsPage: React.FC = () => {
                 <form>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
-                        <input type="date" className="w-full p-2 border rounded-md" />
+                        <input type="date" className={formInputStyle} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
-                        <input type="text" placeholder="e.g., August Installment" className="w-full p-2 border rounded-md" />
+                        <input type="text" placeholder="e.g., August Installment" className={formInputStyle} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Amount</label>
-                        <input type="number" className="w-full p-2 border rounded-md" />
+                        <input type="number" className={formInputStyle} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Type</label>
-                        <select className="w-full p-2 border rounded-md">
+                        <select className={formInputStyle}>
                             <option>Given</option>
                             <option>Received</option>
                         </select>
@@ -130,11 +131,49 @@ const ChitDetailsPage: React.FC = () => {
                  <form>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Member Name</label>
-                        <input type="text" className="w-full p-2 border rounded-md" defaultValue={selectedMember?.name} />
+                        <input type="text" className={formInputStyle} defaultValue={selectedMember?.name} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Phone Number</label>
+                        <input type="tel" className={formInputStyle} defaultValue={selectedMember?.phone} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Email</label>
+                        <input type="email" className={formInputStyle} defaultValue={selectedMember?.email} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Address</label>
+                        <textarea className={formInputStyle} defaultValue={selectedMember?.address}></textarea>
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setEditMemberModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Add Member Modal */}
+            <Modal isOpen={isAddMemberModalOpen} onClose={() => setIsAddMemberModalOpen(false)} title="Add New Member">
+                 <form>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Member Name</label>
+                        <input type="text" placeholder="Enter full name" className={formInputStyle} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Phone Number</label>
+                        <input type="tel" placeholder="Enter 10-digit mobile number" className={formInputStyle} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Email</label>
+                        <input type="email" placeholder="Enter email address" className={formInputStyle} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Address</label>
+                        <textarea placeholder="Enter full address" className={formInputStyle}></textarea>
+                    </div>
+                    <div className="text-right">
+                        <button type="button" onClick={() => setIsAddMemberModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Add Member</button>
                     </div>
                 </form>
             </Modal>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
@@ -8,7 +7,9 @@ import { Expense } from '../types';
 
 const HouseholdExpensesPage: React.FC = () => {
     const [expenses, setExpenses] = useState<Expense[]>(MOCK_EXPENSES);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
     const overview = expenses.reduce((acc, curr) => {
         if (curr.type === 'Income') acc.totalIncome += curr.amount;
@@ -17,6 +18,17 @@ const HouseholdExpensesPage: React.FC = () => {
     }, { totalIncome: 0, totalExpenses: 0 });
 
     const netBalance = overview.totalIncome - overview.totalExpenses;
+
+    const handleEdit = (expense: Expense) => {
+        setSelectedExpense(expense);
+        setIsEditModalOpen(true);
+    };
+
+    const handleRemove = (expenseId: number) => {
+        if (window.confirm('Are you sure you want to remove this transaction?')) {
+            setExpenses(expenses.filter(e => e.id !== expenseId));
+        }
+    };
 
     const tableHeaders = ['Date', 'Description', 'Category', 'Amount', 'Type', 'Actions'];
 
@@ -34,11 +46,13 @@ const HouseholdExpensesPage: React.FC = () => {
                 </span>
             </td>
             <td className="p-4 space-x-2">
-                <button className="text-primary hover:underline">Edit</button>
-                <button className="text-red-600 hover:underline">Remove</button>
+                <button onClick={() => handleEdit(expense)} className="text-primary hover:underline">Edit</button>
+                <button onClick={() => handleRemove(expense.id)} className="text-red-600 hover:underline">Remove</button>
             </td>
         </tr>
     );
+
+    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary";
 
     return (
         <div>
@@ -51,41 +65,75 @@ const HouseholdExpensesPage: React.FC = () => {
 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-textPrimary">Transactions</h2>
-                <button onClick={() => setIsModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
+                <button onClick={() => setIsAddModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">
                     + Add Transaction
                 </button>
             </div>
 
             <Table headers={tableHeaders} data={expenses} renderRow={renderExpenseRow} />
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Transaction">
+            {/* Add Transaction Modal */}
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Transaction">
                 <form>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
-                        <input type="date" className="w-full p-2 border rounded-md" />
+                        <input type="date" className={formInputStyle} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
-                        <input type="text" className="w-full p-2 border rounded-md" />
+                        <input type="text" className={formInputStyle} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Category</label>
-                        <input type="text" className="w-full p-2 border rounded-md" />
+                        <input type="text" className={formInputStyle} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Amount</label>
-                        <input type="number" className="w-full p-2 border rounded-md" />
+                        <input type="number" className={formInputStyle} />
                     </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-textSecondary mb-1">Type</label>
-                        <select className="w-full p-2 border rounded-md">
+                        <select className={formInputStyle}>
                             <option>Income</option>
                             <option>Expense</option>
                         </select>
                     </div>
                     <div className="text-right">
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save</button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Edit Transaction Modal */}
+            <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Transaction">
+                <form>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Date</label>
+                        <input type="date" className={formInputStyle} defaultValue={selectedExpense?.date} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Description</label>
+                        <input type="text" className={formInputStyle} defaultValue={selectedExpense?.description} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Category</label>
+                        <input type="text" className={formInputStyle} defaultValue={selectedExpense?.category} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Amount</label>
+                        <input type="number" className={formInputStyle} defaultValue={selectedExpense?.amount} />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-textSecondary mb-1">Type</label>
+                        <select className={formInputStyle} defaultValue={selectedExpense?.type}>
+                            <option>Income</option>
+                            <option>Expense</option>
+                        </select>
+                    </div>
+                    <div className="text-right">
+                        <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
                     </div>
                 </form>
             </Modal>

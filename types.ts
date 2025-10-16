@@ -10,6 +10,8 @@ export interface NavItem {
 export interface Customer {
   id: number;
   name: string;
+  phone?: string;
+  address?: string;
   totalGiven: number;
   totalReceived: number;
   status: 'Active' | 'Inactive';
@@ -20,6 +22,7 @@ export interface Chit {
   name: string;
   totalValue: number;
   membersCount: number;
+  duration: number; // in months
   amountCollected: number;
   amountGiven: number;
   status: 'Ongoing' | 'Completed';
@@ -38,9 +41,19 @@ export interface Loan {
     id: number;
     name: string;
     principal: number;
+    interestRate: number;
+    duration: number; // in months
     paid: number;
     type: 'Taken' | 'Given';
     status: 'Active' | 'Paid Off';
+}
+
+export interface LoanTransaction {
+  id: number;
+  date: string;
+  amount: number;
+  description: string;
+  type: 'Payment' | 'Disbursement';
 }
 
 export interface MemberTransaction {
@@ -54,6 +67,9 @@ export interface MemberTransaction {
 export interface ChitMember {
   id: number;
   name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
   totalReceived: number;
   totalGiven: number;
   lastTx: string;

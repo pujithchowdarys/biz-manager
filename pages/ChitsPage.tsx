@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '../components/StatCard';
@@ -10,6 +9,7 @@ import { Chit } from '../types';
 const ChitsPage: React.FC = () => {
   const [chits] = useState<Chit[]>(MOCK_CHITS);
   const [isLotteryModalOpen, setLotteryModalOpen] = useState(false);
+  const [isAddChitModalOpen, setIsAddChitModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedChit, setSelectedChit] = useState<Chit | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
@@ -64,6 +64,8 @@ const ChitsPage: React.FC = () => {
       </td>
     </tr>
   );
+  
+  const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary";
 
   return (
     <div>
@@ -77,7 +79,7 @@ const ChitsPage: React.FC = () => {
 
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-semibold text-textPrimary">Chit Groups</h2>
-        <button className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">+ Add Chit</button>
+        <button onClick={() => setIsAddChitModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm">+ Add Chit</button>
       </div>
 
       <Table headers={tableHeaders} data={chits} renderRow={renderChitRow} />
@@ -99,15 +101,54 @@ const ChitsPage: React.FC = () => {
         </div>
       </Modal>
 
+      {/* Edit Chit Modal */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Chit: ${selectedChit?.name}`}>
           <form>
               <div className="mb-4">
                   <label className="block text-sm font-medium text-textSecondary mb-1">Chit Name</label>
-                  <input type="text" className="w-full p-2 border rounded-md" defaultValue={selectedChit?.name} />
+                  <input type="text" className={formInputStyle} defaultValue={selectedChit?.name} />
+              </div>
+              <div className="mb-4">
+                  <label className="block text-sm font-medium text-textSecondary mb-1">Chit Value (₹)</label>
+                  <input type="number" className={formInputStyle} defaultValue={selectedChit?.totalValue} />
+              </div>
+              <div className="mb-4">
+                  <label className="block text-sm font-medium text-textSecondary mb-1">Number of Members</label>
+                  <input type="number" className={formInputStyle} defaultValue={selectedChit?.membersCount} />
+              </div>
+              <div className="mb-4">
+                  <label className="block text-sm font-medium text-textSecondary mb-1">Duration (months)</label>
+                  <input type="number" className={formInputStyle} defaultValue={selectedChit?.duration} />
               </div>
               <div className="text-right">
                   <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Save Changes</button>
+              </div>
+          </form>
+      </Modal>
+
+       {/* Add Chit Modal */}
+       <Modal isOpen={isAddChitModalOpen} onClose={() => setIsAddChitModalOpen(false)} title="Add New Chit">
+          <form>
+              <div className="mb-4">
+                  <label className="block text-sm font-medium text-textSecondary mb-1">Chit Name</label>
+                  <input type="text" className={formInputStyle} placeholder="e.g., Monthly Savings Group"/>
+              </div>
+              <div className="mb-4">
+                  <label className="block text-sm font-medium text-textSecondary mb-1">Chit Value (₹)</label>
+                  <input type="number" className={formInputStyle} placeholder="e.g., 50000" />
+              </div>
+              <div className="mb-4">
+                  <label className="block text-sm font-medium text-textSecondary mb-1">Number of Members</label>
+                  <input type="number" className={formInputStyle} placeholder="e.g., 10" />
+              </div>
+              <div className="mb-4">
+                  <label className="block text-sm font-medium text-textSecondary mb-1">Duration (months)</label>
+                  <input type="number" className={formInputStyle} placeholder="e.g., 10" />
+              </div>
+              <div className="text-right">
+                  <button type="button" onClick={() => setIsAddChitModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Create Chit</button>
               </div>
           </form>
       </Modal>

@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { SUMMARY_DATA } from '../constants';
 
@@ -20,8 +20,15 @@ const SummaryReportPage: React.FC = () => {
         { name: 'Balance to Receive', value: SUMMARY_DATA.loans.balanceToReceive, fill: '#22C55E' },
     ]
 
+    const summaryLinks: { [key: string]: string } = {
+        "Business Summary": "/daily-business",
+        "Chits Summary": "/chits",
+        "Household Summary": "/household-expenses",
+        "Loans Summary": "/loans",
+    };
+
     const SummaryCard: React.FC<{ title: string; data: { [key: string]: number } }> = ({ title, data }) => (
-        <div className="bg-surface p-6 rounded-xl shadow-md">
+        <div className="bg-surface p-6 rounded-xl shadow-md h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
             <h3 className="text-xl font-semibold text-textPrimary mb-4 border-b pb-2">{title}</h3>
             <ul className="space-y-2">
                 {Object.entries(data).map(([key, value]) => (
@@ -39,10 +46,10 @@ const SummaryReportPage: React.FC = () => {
             <h1 className="text-3xl font-bold mb-6 text-textPrimary">Summary Report</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <SummaryCard title="Business Summary" data={SUMMARY_DATA.business} />
-                <SummaryCard title="Chits Summary" data={SUMMARY_DATA.chits} />
-                <SummaryCard title="Household Summary" data={SUMMARY_DATA.household} />
-                <SummaryCard title="Loans Summary" data={SUMMARY_DATA.loans} />
+                <Link to={summaryLinks["Business Summary"]}><SummaryCard title="Business Summary" data={SUMMARY_DATA.business} /></Link>
+                <Link to={summaryLinks["Chits Summary"]}><SummaryCard title="Chits Summary" data={SUMMARY_DATA.chits} /></Link>
+                <Link to={summaryLinks["Household Summary"]}><SummaryCard title="Household Summary" data={SUMMARY_DATA.household} /></Link>
+                <Link to={summaryLinks["Loans Summary"]}><SummaryCard title="Loans Summary" data={SUMMARY_DATA.loans} /></Link>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -71,7 +78,8 @@ const SummaryReportPage: React.FC = () => {
                                 outerRadius={100}
                                 fill="#8884d8"
                                 dataKey="value"
-                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                // Fix: The 'percent' prop can be undefined. Provide a fallback to 0 to prevent a TypeScript error during the arithmetic operation.
+                                label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                             >
                                 {householdData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

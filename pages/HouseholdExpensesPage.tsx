@@ -9,6 +9,7 @@ import { EditIcon, TrashIcon } from '../constants';
 const HouseholdExpensesPage: React.FC = () => {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
@@ -100,11 +101,22 @@ const HouseholdExpensesPage: React.FC = () => {
     const netBalance = overview.totalIncome - overview.totalExpenses;
 
     const tableHeaders = ['Date', 'Description', 'Category', 'Amount', 'Type', 'Actions'];
+    
+    const filteredExpenses = expenses.filter(expense =>
+        expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        expense.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const renderExpenseRow = (expense: Expense) => (
         <tr key={expense.id} className="border-b hover:bg-gray-50">
-            <td className="p-4 text-textSecondary">{expense.expense_date}</td>
-            <td className="p-4 font-medium text-textPrimary">{expense.description}</td>
+            <td className="p-4 text-textSecondary">{new Date(expense.expense_date).toLocaleDateString()}</td>
+            <td className="p-4 font-medium text-textPrimary">
+                {expense.description}
+                <div className="md:hidden mt-2 space-x-2">
+                    <button onClick={() => handleOpenModal(setIsEditModalOpen, expense, { ...expense })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={() => handleDeleteExpense(expense.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4" /></button>
+                </div>
+            </td>
             <td className="p-4 text-textSecondary">{expense.category}</td>
             <td className={`p-4 font-semibold ${expense.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
                 ₹{expense.amount.toLocaleString()}
@@ -114,7 +126,7 @@ const HouseholdExpensesPage: React.FC = () => {
                     {expense.type}
                 </span>
             </td>
-            <td className="p-4 space-x-2">
+            <td className="p-4 space-x-2 hidden md:table-cell">
                 <button onClick={() => handleOpenModal(setIsEditModalOpen, expense, { ...expense })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
                 <button onClick={() => handleDeleteExpense(expense.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
             </td>
@@ -137,14 +149,25 @@ const HouseholdExpensesPage: React.FC = () => {
                 <StatCard title="Net Balance" value={`₹${netBalance.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M5.5 9.5L14.5 5M18 20v-5h-5m3.5 1.5L9.5 19" /></svg>} color="bg-blue-500" />
             </div>
 
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-semibold text-textPrimary">Transactions</h2>
-                <button onClick={() => handleOpenModal(setIsAddModalOpen, null, { expense_date: new Date().toISOString().split('T')[0], type: 'Expense' })} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors shadow-sm">
-                    + Add Transaction
-                </button>
+            <div className="bg-surface p-4 rounded-lg shadow mb-6">
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <h2 className="text-2xl font-semibold text-textPrimary">Transactions</h2>
+                     <div className="flex-grow max-w-md">
+                         <input
+                            type="text"
+                            placeholder="Search by description or category..."
+                            className="w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button onClick={() => handleOpenModal(setIsAddModalOpen, null, { expense_date: new Date().toISOString().split('T')[0], type: 'Expense' })} className="bg-primary text-white font-semibold px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm whitespace-nowrap">
+                        + Add Transaction
+                    </button>
+                </div>
             </div>
 
-            {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={expenses} renderRow={renderExpenseRow} />}
+            {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={filteredExpenses} renderRow={renderExpenseRow} />}
 
             {/* Add/Edit Transaction Modal */}
             <Modal isOpen={isAddModalOpen || isEditModalOpen} onClose={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} title={isEditModalOpen ? "Edit Transaction" : "Add New Transaction"}>
@@ -174,7 +197,7 @@ const HouseholdExpensesPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">{isEditModalOpen ? 'Save Changes' : 'Save'}</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">{isEditModalOpen ? 'Save Changes' : 'Save'}</button>
                     </div>
                 </form>
             </Modal>

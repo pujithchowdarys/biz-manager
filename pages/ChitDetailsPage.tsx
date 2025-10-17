@@ -13,6 +13,7 @@ const ChitDetailsPage: React.FC = () => {
     const [members, setMembers] = useState<ChitMember[]>([]);
     const [transactions, setTransactions] = useState<ChitTransaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [isTxModalOpen, setTxModalOpen] = useState(false);
     const [isAddTxModalOpen, setAddTxModalOpen] = useState(false);
@@ -213,9 +214,21 @@ const ChitDetailsPage: React.FC = () => {
 
     const memberHeaders = ['Member Name', 'Total Given', 'Total Received', 'Last Transaction', 'Lottery Status', 'Actions'];
   
+    const filteredMembers = members.filter(member =>
+        member.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     const renderMemberRow = (member: ChitMember) => (
          <tr key={member.id} className="border-b hover:bg-gray-50">
-            <td className="p-4 font-medium text-textPrimary">{member.name}</td>
+            <td className="p-4 font-medium text-textPrimary">
+                {member.name}
+                <div className="md:hidden mt-2 space-x-2">
+                    <button onClick={() => handleOpenModal(setTxModalOpen, member)} className="text-primary hover:underline text-sm">Details</button>
+                    <button onClick={() => handleOpenModal(setAddTxModalOpen, member, { date: new Date().toISOString().split('T')[0], type: 'Given' })} className="text-blue-600 hover:underline text-sm">Add Tx</button>
+                    <button onClick={() => handleOpenModal(setEditMemberModalOpen, member, { ...member })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={() => handleDeleteMember(member.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4" /></button>
+                </div>
+            </td>
             <td className="p-4 text-green-600">₹{member.totalGiven.toLocaleString()}</td>
             <td className="p-4 text-red-600">₹{member.totalReceived.toLocaleString()}</td>
             <td className="p-4 text-textPrimary">{member.lastTx}</td>
@@ -229,7 +242,7 @@ const ChitDetailsPage: React.FC = () => {
                     <option value="Won">Won</option>
                 </select>
             </td>
-            <td className="p-4 space-x-2 whitespace-nowrap">
+            <td className="p-4 space-x-2 whitespace-nowrap hidden md:table-cell">
                 <button onClick={() => handleOpenModal(setTxModalOpen, member)} className="text-primary hover:underline">Details</button>
                 <button onClick={() => handleOpenModal(setAddTxModalOpen, member, { date: new Date().toISOString().split('T')[0], type: 'Given' })} className="text-blue-600 hover:underline">Add Tx</button>
                 <button onClick={() => handleOpenModal(setEditMemberModalOpen, member, { ...member })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
@@ -253,14 +266,25 @@ const ChitDetailsPage: React.FC = () => {
                 </div>
             )}
 
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-semibold text-textPrimary">Members</h2>
-                <button onClick={() => handleOpenModal(setIsAddMemberModalOpen, null)} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors shadow-sm">
-                    + Add Member
-                </button>
+            <div className="bg-surface p-4 rounded-lg shadow mb-6">
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <h2 className="text-2xl font-semibold text-textPrimary">Members</h2>
+                     <div className="flex-grow max-w-md">
+                         <input
+                            type="text"
+                            placeholder="Search members..."
+                            className="w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button onClick={() => handleOpenModal(setIsAddMemberModalOpen, null)} className="bg-primary text-white font-semibold px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm whitespace-nowrap">
+                        + Add Member
+                    </button>
+                </div>
             </div>
 
-            <Table headers={memberHeaders} data={members} renderRow={renderMemberRow} />
+            <Table headers={memberHeaders} data={filteredMembers} renderRow={renderMemberRow} />
 
             {/* View Transactions Modal */}
             <Modal isOpen={isTxModalOpen} onClose={() => setTxModalOpen(false)} title={`Transactions for ${selectedMember?.name}`}>
@@ -310,7 +334,7 @@ const ChitDetailsPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => { setAddTxModalOpen(false); setEditTxModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">{isEditTxModalOpen ? "Save Changes" : "Save Transaction"}</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">{isEditTxModalOpen ? "Save Changes" : "Save Transaction"}</button>
                     </div>
                 </form>
             </Modal>
@@ -336,7 +360,7 @@ const ChitDetailsPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setEditMemberModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Save Changes</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Save Changes</button>
                     </div>
                 </form>
             </Modal>
@@ -362,7 +386,7 @@ const ChitDetailsPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsAddMemberModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Add Member</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Add Member</button>
                     </div>
                 </form>
             </Modal>

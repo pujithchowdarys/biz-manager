@@ -10,6 +10,7 @@ const LoansPage: React.FC = () => {
     const [loans, setLoans] = useState<Loan[]>([]);
     const [transactions, setTransactions] = useState<LoanTransaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [isAddLoanModalOpen, setIsAddLoanModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -175,9 +176,21 @@ const LoansPage: React.FC = () => {
 
     const tableHeaders = ['Loan Name', 'Principal', 'Paid', 'Balance', 'Type', 'Status', 'Actions'];
 
+    const filteredLoans = loans.filter(loan =>
+        loan.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     const renderLoanRow = (loan: Loan) => (
         <tr key={loan.id} className="border-b hover:bg-gray-50">
-            <td className="p-4 font-medium text-textPrimary">{loan.name}</td>
+            <td className="p-4 font-medium text-textPrimary">
+                {loan.name}
+                <div className="md:hidden mt-2 space-x-2">
+                    <button onClick={() => handleOpenModal(setIsViewTxModalOpen, loan)} className="text-primary hover:underline text-sm">View</button>
+                    <button onClick={() => handleOpenModal(setIsAddPaymentModalOpen, loan, { date: new Date().toISOString().split('T')[0] })} className="text-blue-600 hover:underline text-sm">Add Payment</button>
+                    <button onClick={() => handleOpenModal(setIsEditModalOpen, loan, { ...loan })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={() => handleDeleteLoan(loan.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4" /></button>
+                </div>
+            </td>
             <td className="p-4 text-textPrimary">₹{loan.principal.toLocaleString()}</td>
             <td className="p-4 text-green-600">₹{loan.paid.toLocaleString()}</td>
             <td className="p-4 font-semibold text-red-600">₹{(loan.principal - loan.paid).toLocaleString()}</td>
@@ -191,7 +204,7 @@ const LoansPage: React.FC = () => {
                     {loan.status}
                 </span>
             </td>
-            <td className="p-4 space-x-2 whitespace-nowrap">
+            <td className="p-4 space-x-2 whitespace-nowrap hidden md:table-cell">
                 <button onClick={() => handleOpenModal(setIsViewTxModalOpen, loan)} className="text-primary hover:underline">View</button>
                 <button onClick={() => handleOpenModal(setIsAddPaymentModalOpen, loan, { date: new Date().toISOString().split('T')[0] })} className="text-blue-600 hover:underline">Add Payment</button>
                 <button onClick={() => handleOpenModal(setIsEditModalOpen, loan, { ...loan })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
@@ -218,14 +231,25 @@ const LoansPage: React.FC = () => {
                 <StatCard title="Balance Left" value={`₹${overview.balanceLeft.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} color="bg-red-500" />
             </div>
 
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-semibold text-textPrimary">All Loans</h2>
-                <button onClick={() => handleOpenModal(setIsAddLoanModalOpen, null, { type: 'Taken' })} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors shadow-sm">
-                    + Add Loan
-                </button>
+            <div className="bg-surface p-4 rounded-lg shadow mb-6">
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <h2 className="text-2xl font-semibold text-textPrimary">All Loans</h2>
+                     <div className="flex-grow max-w-md">
+                         <input
+                            type="text"
+                            placeholder="Search loans..."
+                            className="w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button onClick={() => handleOpenModal(setIsAddLoanModalOpen, null, { type: 'Taken' })} className="bg-primary text-white font-semibold px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm whitespace-nowrap">
+                        + Add Loan
+                    </button>
+                </div>
             </div>
 
-            {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={loans} renderRow={renderLoanRow} />}
+            {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={filteredLoans} renderRow={renderLoanRow} />}
 
             {/* Edit Loan Modal */}
             <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Loan: ${selectedLoan?.name}`}>
@@ -244,7 +268,7 @@ const LoansPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Save Changes</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Save Changes</button>
                     </div>
                 </form>
             </Modal>
@@ -277,7 +301,7 @@ const LoansPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsAddLoanModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Add Loan</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Add Loan</button>
                     </div>
                 </form>
             </Modal>
@@ -323,7 +347,7 @@ const LoansPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => { setIsAddPaymentModalOpen(false); setIsEditTxModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">{isEditTxModalOpen ? "Save Changes" : "Save Payment"}</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">{isEditTxModalOpen ? "Save Changes" : "Save Payment"}</button>
                     </div>
                 </form>
             </Modal>

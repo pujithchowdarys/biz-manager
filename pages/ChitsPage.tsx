@@ -10,6 +10,7 @@ import { EditIcon, TrashIcon } from '../constants';
 const ChitsPage: React.FC = () => {
   const [chits, setChits] = useState<Chit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isAddChitModalOpen, setIsAddChitModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLotteryModalOpen, setIsLotteryModalOpen] = useState(false);
@@ -185,12 +186,23 @@ const ChitsPage: React.FC = () => {
     }
   };
 
-
   const tableHeaders = ['Chit Name', 'Total Value', 'Members', 'Collected', 'Given', 'Savings', 'Status', 'Actions'];
+
+  const filteredChits = chits.filter(chit =>
+    chit.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const renderChitRow = (chit: Chit) => (
     <tr key={chit.id} className="border-b hover:bg-gray-50">
-      <td className="p-4 font-medium text-textPrimary">{chit.name}</td>
+      <td className="p-4 font-medium text-textPrimary">
+        {chit.name}
+        <div className="md:hidden mt-2 space-x-2">
+            <button onClick={() => navigate(`/chits/${chit.id}`)} className="text-primary hover:underline text-sm">Details</button>
+            <button onClick={() => handleOpenLotteryModal(chit)} className="text-secondary hover:underline text-sm">Lottery</button>
+            <button onClick={() => handleOpenModal(setIsEditModalOpen, chit, { ...chit })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon className="h-4 w-4" /></button>
+            <button onClick={() => handleDeleteChit(chit.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4" /></button>
+        </div>
+      </td>
       <td className="p-4 text-textPrimary">₹{chit.total_value.toLocaleString()}</td>
       <td className="p-4 text-textPrimary">{chit.members_count}</td>
       <td className="p-4 text-green-600">₹{chit.amountCollected.toLocaleString()}</td>
@@ -201,7 +213,7 @@ const ChitsPage: React.FC = () => {
           {chit.status}
         </span>
       </td>
-      <td className="p-4 space-x-2 whitespace-nowrap">
+      <td className="p-4 space-x-2 whitespace-nowrap hidden md:table-cell">
         <button onClick={() => navigate(`/chits/${chit.id}`)} className="text-primary hover:underline">Details</button>
         <button onClick={() => handleOpenLotteryModal(chit)} className="text-secondary hover:underline">Lottery</button>
         <button onClick={() => handleOpenModal(setIsEditModalOpen, chit, { ...chit })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
@@ -227,12 +239,23 @@ const ChitsPage: React.FC = () => {
         <StatCard title="Total Savings" value={loading ? '₹...' : `₹${overview.totalSavings.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>} color="bg-blue-500" />
       </div>
 
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold text-textPrimary">Chit Groups</h2>
-        <button onClick={() => handleOpenModal(setIsAddChitModalOpen, null)} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors shadow-sm">+ Add Chit</button>
+      <div className="bg-surface p-4 rounded-lg shadow mb-6">
+          <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+              <h2 className="text-2xl font-semibold text-textPrimary">Chit Groups</h2>
+              <div className="flex-grow max-w-md">
+                   <input
+                      type="text"
+                      placeholder="Search chits..."
+                      className="w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+              </div>
+              <button onClick={() => handleOpenModal(setIsAddChitModalOpen, null)} className="bg-primary text-white font-semibold px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm whitespace-nowrap">+ Add Chit</button>
+          </div>
       </div>
 
-      {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={chits} renderRow={renderChitRow} />}
+      {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={filteredChits} renderRow={renderChitRow} />}
 
       {/* Lottery Modal */}
       <Modal isOpen={isLotteryModalOpen} onClose={() => setIsLotteryModalOpen(false)} title={`Lottery for ${selectedChit?.name}`}>
@@ -272,7 +295,7 @@ const ChitsPage: React.FC = () => {
               </div>
               <div className="text-right">
                   <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Save Changes</button>
+                  <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Save Changes</button>
               </div>
           </form>
       </Modal>
@@ -298,7 +321,7 @@ const ChitsPage: React.FC = () => {
               </div>
               <div className="text-right">
                   <button type="button" onClick={() => setIsAddChitModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Create Chit</button>
+                  <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Create Chit</button>
               </div>
           </form>
       </Modal>

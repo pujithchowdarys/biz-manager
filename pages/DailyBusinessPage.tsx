@@ -10,6 +10,7 @@ const DailyBusinessPage: React.FC = () => {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -168,9 +169,21 @@ const DailyBusinessPage: React.FC = () => {
     
     const tableHeaders = ['Customer Name', 'Total Given', 'Total Received', 'Balance', 'Status', 'Actions'];
 
+    const filteredCustomers = customers.filter(customer =>
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     const renderCustomerRow = (customer: Customer) => (
         <tr key={customer.id} className="border-b hover:bg-gray-50">
-            <td className="p-4 font-medium text-textPrimary">{customer.name}</td>
+            <td className="p-4 font-medium text-textPrimary">
+                {customer.name}
+                <div className="md:hidden mt-2 space-x-2">
+                    <button onClick={() => { setSelectedCustomer(customer); setIsViewModalOpen(true); }} className="text-primary hover:underline text-sm">View</button>
+                    <button onClick={() => handleOpenModal(setIsAddTxModalOpen, customer, { date: new Date().toISOString().split('T')[0], type: 'Given' })} className="text-blue-600 hover:underline text-sm">Add Tx</button>
+                    <button onClick={() => handleOpenModal(setIsEditModalOpen, customer, { ...customer })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={() => handleDeleteCustomer(customer.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4" /></button>
+                </div>
+            </td>
             <td className="p-4 text-green-600">₹{customer.totalGiven.toLocaleString()}</td>
             <td className="p-4 text-red-600">₹{customer.totalReceived.toLocaleString()}</td>
             <td className={`p-4 font-semibold ${customer.totalGiven - customer.totalReceived >= 0 ? 'text-green-700' : 'text-red-700'}`}>
@@ -181,7 +194,7 @@ const DailyBusinessPage: React.FC = () => {
                     {customer.status}
                 </span>
             </td>
-            <td className="p-4 space-x-2 whitespace-nowrap">
+            <td className="p-4 space-x-2 whitespace-nowrap hidden md:table-cell">
                 <button onClick={() => { setSelectedCustomer(customer); setIsViewModalOpen(true); }} className="text-primary hover:underline">View</button>
                 <button onClick={() => handleOpenModal(setIsAddTxModalOpen, customer, { date: new Date().toISOString().split('T')[0], type: 'Given' })} className="text-blue-600 hover:underline">Add Tx</button>
                 <button onClick={() => handleOpenModal(setIsEditModalOpen, customer, { ...customer })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
@@ -212,14 +225,25 @@ const DailyBusinessPage: React.FC = () => {
                 <StatCard title="Balance" value={`₹${balance.toLocaleString()}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M5.5 9.5L14.5 5M18 20v-5h-5m3.5 1.5L9.5 19" /></svg>} color="bg-blue-500" />
             </div>
 
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-semibold text-textPrimary">Customers</h2>
-                <button onClick={() => handleOpenModal(setIsAddCustomerModalOpen, null)} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors shadow-sm">
-                    + Add Customer
-                </button>
+            <div className="bg-surface p-4 rounded-lg shadow mb-6">
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <h2 className="text-2xl font-semibold text-textPrimary">Customers</h2>
+                    <div className="flex-grow max-w-md">
+                         <input
+                            type="text"
+                            placeholder="Search customers..."
+                            className="w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button onClick={() => handleOpenModal(setIsAddCustomerModalOpen, null)} className="bg-primary text-white font-semibold px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shadow-sm whitespace-nowrap">
+                        + Add Customer
+                    </button>
+                </div>
             </div>
             
-            {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={customers} renderRow={renderCustomerRow} />}
+            {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={filteredCustomers} renderRow={renderCustomerRow} />}
 
             {/* View Transactions Modal */}
             <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`Transactions for ${selectedCustomer?.name}`}>
@@ -270,7 +294,7 @@ const DailyBusinessPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Save Changes</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Save Changes</button>
                     </div>
                 </form>
             </Modal>
@@ -292,7 +316,7 @@ const DailyBusinessPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => setIsAddCustomerModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">Add Customer</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Add Customer</button>
                     </div>
                 </form>
             </Modal>
@@ -321,7 +345,7 @@ const DailyBusinessPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <button type="button" onClick={() => { setIsAddTxModalOpen(false); setIsEditTxModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-light text-primary font-semibold rounded-md hover:bg-blue-200">{isEditTxModalOpen ? "Save Changes" : "Save Transaction"}</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">{isEditTxModalOpen ? "Save Changes" : "Save Transaction"}</button>
                     </div>
                 </form>
             </Modal>

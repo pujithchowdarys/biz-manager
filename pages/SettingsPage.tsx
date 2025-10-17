@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+
+import React, { useState, useContext } from 'react';
 import { supabaseUrl } from '../supabaseClient';
+import { AuthContext } from '../contexts/AuthContext';
 
 const SettingsPage: React.FC = () => {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { logout } = useContext(AuthContext);
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
@@ -13,6 +16,11 @@ const SettingsPage: React.FC = () => {
     navigator.clipboard.writeText(supabaseUrl);
     showNotification('Supabase URL copied to clipboard!', 'success');
   }
+
+  const handleLogout = () => {
+    logout();
+    // The ProtectedRoute component will handle redirecting to the login page.
+  };
 
   return (
     <div>
@@ -51,10 +59,10 @@ const SettingsPage: React.FC = () => {
         {/* Manage Account */}
         <div className="bg-surface p-6 rounded-xl shadow-md">
           <h2 className="text-xl font-semibold text-textPrimary border-b pb-2 mb-4">Manage Account</h2>
-          <p className="text-textSecondary">This feature requires Supabase Auth to be implemented.</p>
+          <p className="text-textSecondary">You are currently logged in as the admin user.</p>
           <div className="mt-4">
             <button className="text-primary hover:underline" disabled>Change Password</button>
-            <button className="ml-4 text-red-600 hover:underline" disabled>Logout</button>
+            <button onClick={handleLogout} className="ml-4 text-red-600 hover:underline">Logout</button>
           </div>
         </div>
 

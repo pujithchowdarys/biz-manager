@@ -12,9 +12,26 @@ interface SummaryData {
 }
 
 const SummaryReportPage: React.FC = () => {
-    const { supabase } = useContext(AuthContext);
+    const { supabase, theme } = useContext(AuthContext);
     const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const getChartColors = () => {
+        if (theme === 'dark') {
+            return {
+                green: '#4ADE80',
+                red: '#F87171',
+                text: '#9CA3AF',
+            };
+        }
+        return {
+            green: '#22C55E',
+            red: '#EF4444',
+            text: '#6B7280',
+        };
+    };
+    const chartColors = getChartColors();
+
 
     const fetchSummaryData = useCallback(async () => {
         if (!supabase) return;
@@ -105,7 +122,7 @@ const SummaryReportPage: React.FC = () => {
 
     const SummaryCard: React.FC<{ title: string; data?: { [key: string]: number } }> = ({ title, data }) => (
         <div className="bg-surface p-6 rounded-xl shadow-md h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-            <h3 className="text-xl font-semibold text-textPrimary mb-4 border-b pb-2">{title}</h3>
+            <h3 className="text-xl font-semibold text-textPrimary mb-4 border-b border-border pb-2">{title}</h3>
             {data ? (
                  <ul className="space-y-2">
                     {Object.entries(data).map(([key, value]) => (
@@ -124,19 +141,19 @@ const SummaryReportPage: React.FC = () => {
     }
     
     const businessChartData = [
-        { name: 'Given', value: summaryData.business.totalGiven, fill: '#22C55E' },
-        { name: 'Received', value: summaryData.business.totalReceived, fill: '#EF4444' },
+        { name: 'Given', value: summaryData.business.totalGiven, fill: chartColors.green },
+        { name: 'Received', value: summaryData.business.totalReceived, fill: chartColors.red },
     ];
     
     const householdChartData = [
         { name: 'Income', value: summaryData.household.totalIncome },
         { name: 'Expenses', value: summaryData.household.totalExpenses },
     ];
-    const COLORS = ['#10B981', '#F43F5E'];
+    const pieColors = [chartColors.green, chartColors.red];
 
     const loansChartData = [
-        { name: 'Balance to Pay', value: summaryData.loans.balanceToPay, fill: '#EF4444'},
-        { name: 'Balance to Receive', value: summaryData.loans.balanceToReceive, fill: '#22C55E' },
+        { name: 'Balance to Pay', value: summaryData.loans.balanceToPay, fill: chartColors.red},
+        { name: 'Balance to Receive', value: summaryData.loans.balanceToReceive, fill: chartColors.green },
     ]
 
     return (
@@ -155,11 +172,13 @@ const SummaryReportPage: React.FC = () => {
                     <h3 className="text-xl font-semibold text-textPrimary mb-4">Business Flow</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={businessChartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis tickFormatter={(value) => `₹${Number(value) / 1000}k`} />
-                            <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Amount']} />
-                            <Legend />
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.text} strokeOpacity={0.2} />
+                            <XAxis dataKey="name" tick={{ fill: chartColors.text }} />
+                            <YAxis tickFormatter={(value) => `₹${Number(value) / 1000}k`} tick={{ fill: chartColors.text }} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                                formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Amount']} />
+                            <Legend wrapperStyle={{ color: chartColors.text }} />
                             <Bar dataKey="value" name="Amount">
                                 {businessChartData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -180,15 +199,27 @@ const SummaryReportPage: React.FC = () => {
                                 outerRadius={100}
                                 fill="#8884d8"
                                 dataKey="value"
-                                // FIX: Explicitly cast `percent` to a number to prevent type errors.
-                                label={({ name, percent }) => `${name} ${(Number(percent || 0) * 100).toFixed(0)}%`}
+                                // FIX: The 'labelStyle' prop is not valid for the Pie component. A custom label renderer is used instead to apply the desired text color.
+                                label={({ name, percent, x, y, cx }) => (
+                                    <text
+                                        x={x}
+                                        y={y}
+                                        fill={chartColors.text}
+                                        textAnchor={x > cx ? 'start' : 'end'}
+                                        dominantBaseline="central"
+                                    >
+                                        {`${name} ${(Number(percent || 0) * 100).toFixed(0)}%`}
+                                    </text>
+                                )}
                             >
                                 {householdChartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} />
-                            <Legend />
+                            <Tooltip 
+                                contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                                formatter={(value) => `₹${Number(value).toLocaleString()}`} />
+                            <Legend wrapperStyle={{ color: chartColors.text }} />
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
@@ -196,11 +227,13 @@ const SummaryReportPage: React.FC = () => {
                     <h3 className="text-xl font-semibold text-textPrimary mb-4">Loan Balances</h3>
                     <ResponsiveContainer width="100%" height={300}>
                          <BarChart data={loansChartData} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis type="number" tickFormatter={(value) => `₹${Number(value) / 1000}k`} />
-                            <YAxis type="category" dataKey="name" width={150} />
-                            <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Amount']} />
-                            <Legend />
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.text} strokeOpacity={0.2} />
+                            <XAxis type="number" tickFormatter={(value) => `₹${Number(value) / 1000}k`} tick={{ fill: chartColors.text }}/>
+                            <YAxis type="category" dataKey="name" width={150} tick={{ fill: chartColors.text }} />
+                            <Tooltip 
+                                contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                                formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Amount']} />
+                            <Legend wrapperStyle={{ color: chartColors.text }} />
                             <Bar dataKey="value" name="Amount" barSize={40}>
                                 {loansChartData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />

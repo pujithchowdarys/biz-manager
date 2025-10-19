@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -7,21 +6,107 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Business Manager Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --color-primary: #1E40AF;
+        --color-primary-hover: #1D4ED8;
+        --color-primary-light: #DBEAFE;
+        --color-secondary: #10B981;
+        --color-background: #F3F4F6;
+        --color-surface: #FFFFFF;
+        --color-text-primary: #1F2937;
+        --color-text-secondary: #6B7280;
+        --color-border: #D1D5DB;
+        --color-code-bg: #F3F4F6;
+        --color-table-header: #F9FAFB;
+        --color-table-row-hover: #F9FAFB;
+
+        /* Status Colors */
+        --color-success: #16a34a;
+        --color-danger: #dc2626;
+        --color-warning: #d97706;
+
+        /* Pill Backgrounds & Text */
+        --color-pill-success-bg: #D1FAE5;
+        --color-pill-success-text: #065F46;
+        --color-pill-danger-bg: #FEE2E2;
+        --color-pill-danger-text: #991B1B;
+        --color-pill-warning-bg: #FEF3C7;
+        --color-pill-warning-text: #92400E;
+        --color-pill-neutral-bg: #E0E7FF;
+        --color-pill-neutral-text: #3730A3;
+        --color-pill-active-bg: #FEF3C7;
+        --color-pill-active-text: #92400E;
+      }
+      html.dark {
+        --color-primary: #60A5FA;
+        --color-primary-hover: #93C5FD;
+        --color-primary-light: #374151;
+        --color-secondary: #34D399;
+        --color-background: #111827;
+        --color-surface: #1F2937;
+        --color-text-primary: #F9FAFB;
+        --color-text-secondary: #9CA3AF;
+        --color-border: #4B5563;
+        --color-code-bg: #1F2937;
+        --color-table-header: #374151;
+        --color-table-row-hover: #374151;
+
+        /* Status Colors */
+        --color-success: #4ADE80;
+        --color-danger: #F87171;
+        --color-warning: #FBBF24;
+
+        /* Pill Backgrounds & Text */
+        --color-pill-success-bg: #14532d;
+        --color-pill-success-text: #a7f3d0;
+        --color-pill-danger-bg: #7f1d1d;
+        --color-pill-danger-text: #fecaca;
+        --color-pill-warning-bg: #78350f;
+        --color-pill-warning-text: #fde68a;
+        --color-pill-neutral-bg: #312e81;
+        --color-pill-neutral-text: #c7d2fe;
+        --color-pill-active-bg: #78350f;
+        --color-pill-active-text: #fde68a;
+      }
+      body {
+        background-color: var(--color-background);
+        color: var(--color-text-primary);
+        transition: background-color 0.3s, color 0.3s;
+      }
+    </style>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
               primary: {
-                DEFAULT: '#1E40AF',
-                hover: '#1D4ED8',
-                light: '#DBEAFE'
+                DEFAULT: 'var(--color-primary)',
+                hover: 'var(--color-primary-hover)',
+                light: 'var(--color-primary-light)'
               },
-              secondary: '#10B981',
-              background: '#F3F4F6',
-              surface: '#FFFFFF',
-              textPrimary: '#1F2937',
-              textSecondary: '#6B7280',
+              secondary: 'var(--color-secondary)',
+              background: 'var(--color-background)',
+              surface: 'var(--color-surface)',
+              textPrimary: 'var(--color-text-primary)',
+              textSecondary: 'var(--color-text-secondary)',
+              border: 'var(--color-border)',
+              codeBg: 'var(--color-code-bg)',
+              table: {
+                header: 'var(--color-table-header)',
+                rowHover: 'var(--color-table-row-hover)',
+              },
+              success: 'var(--color-success)',
+              danger: 'var(--color-danger)',
+              warning: 'var(--color-warning)',
+              pill: {
+                success: { bg: 'var(--color-pill-success-bg)', text: 'var(--color-pill-success-text)' },
+                danger: { bg: 'var(--color-pill-danger-bg)', text: 'var(--color-pill-danger-text)' },
+                warning: { bg: 'var(--color-pill-warning-bg)', text: 'var(--color-pill-warning-text)' },
+                neutral: { bg: 'var(--color-pill-neutral-bg)', text: 'var(--color-pill-neutral-text)' },
+                active: { bg: 'var(--color-pill-active-bg)', text: 'var(--color-pill-active-text)' },
+              }
             },
           },
         },
@@ -41,7 +126,7 @@
 }
 </script>
 </head>
-  <body class="bg-background">
+  <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

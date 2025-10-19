@@ -182,36 +182,36 @@ const DailyBusinessPage: React.FC = () => {
     );
 
     const renderCustomerRow = (customer: Customer) => (
-        <tr key={customer.id} className="border-b hover:bg-gray-50">
+        <tr key={customer.id} className="border-b border-border hover:bg-table-rowHover">
             <td className="p-4 font-medium text-textPrimary">
                 {customer.name}
                 <div className="md:hidden mt-2 space-x-2">
                     <button onClick={() => { setSelectedCustomer(customer); setIsViewModalOpen(true); }} className="text-primary hover:underline text-sm">View</button>
                     <button onClick={() => handleOpenModal(setIsAddTxModalOpen, customer, { date: new Date().toISOString().split('T')[0], type: 'Given' })} className="text-blue-600 hover:underline text-sm">Add Tx</button>
-                    <button onClick={() => handleOpenModal(setIsEditModalOpen, customer, { ...customer })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon className="h-4 w-4" /></button>
-                    <button onClick={() => handleDeleteCustomer(customer.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4" /></button>
+                    <button onClick={() => handleOpenModal(setIsEditModalOpen, customer, { ...customer })} className="p-1 text-warning rounded-full hover:bg-pill-warning-bg"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={() => handleDeleteCustomer(customer.id)} className="p-1 text-danger rounded-full hover:bg-pill-danger-bg"><TrashIcon className="h-4 w-4" /></button>
                 </div>
             </td>
-            <td className="p-4 text-green-600">₹{customer.totalGiven.toLocaleString()}</td>
-            <td className="p-4 text-red-600">₹{customer.totalReceived.toLocaleString()}</td>
-            <td className={`p-4 font-semibold ${customer.totalGiven - customer.totalReceived >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            <td className="p-4 text-success">₹{customer.totalGiven.toLocaleString()}</td>
+            <td className="p-4 text-danger">₹{customer.totalReceived.toLocaleString()}</td>
+            <td className={`p-4 font-semibold ${customer.totalGiven - customer.totalReceived >= 0 ? 'text-success' : 'text-danger'}`}>
                 ₹{(customer.totalGiven - customer.totalReceived).toLocaleString()}
             </td>
             <td className="p-4">
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${customer.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${customer.status === 'Active' ? 'bg-pill-success-bg text-pill-success-text' : 'bg-pill-danger-bg text-pill-danger-text'}`}>
                     {customer.status}
                 </span>
             </td>
             <td className="p-4 space-x-2 whitespace-nowrap hidden md:table-cell">
                 <button onClick={() => { setSelectedCustomer(customer); setIsViewModalOpen(true); }} className="text-primary hover:underline">View</button>
                 <button onClick={() => handleOpenModal(setIsAddTxModalOpen, customer, { date: new Date().toISOString().split('T')[0], type: 'Given' })} className="text-blue-600 hover:underline">Add Tx</button>
-                <button onClick={() => handleOpenModal(setIsEditModalOpen, customer, { ...customer })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
-                <button onClick={() => handleDeleteCustomer(customer.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
+                <button onClick={() => handleOpenModal(setIsEditModalOpen, customer, { ...customer })} className="p-1 text-warning rounded-full hover:bg-pill-warning-bg"><EditIcon /></button>
+                <button onClick={() => handleDeleteCustomer(customer.id)} className="p-1 text-danger rounded-full hover:bg-pill-danger-bg"><TrashIcon /></button>
             </td>
         </tr>
     );
 
-    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
+    const formInputStyle = "w-full p-2 border border-border rounded-md bg-surface text-textPrimary focus:ring-primary focus:border-primary";
 
     const customerTransactions = selectedCustomer
         ? transactions
@@ -227,7 +227,7 @@ const DailyBusinessPage: React.FC = () => {
         <div>
             <h1 className="text-3xl font-bold mb-6 text-textPrimary">Daily Business</h1>
              {notification && (
-                <div className={`p-4 mb-4 rounded-md ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <div className={`p-4 mb-4 rounded-md ${notification.type === 'success' ? 'bg-pill-success-bg text-pill-success-text' : 'bg-pill-danger-bg text-pill-danger-text'}`}>
                 {notification.message}
                 </div>
             )}
@@ -244,7 +244,7 @@ const DailyBusinessPage: React.FC = () => {
                          <input
                             type="text"
                             placeholder="Search customers..."
-                            className="w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+                            className="w-full p-2 border border-border rounded-md bg-surface text-textPrimary focus:ring-primary focus:border-primary"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -262,17 +262,17 @@ const DailyBusinessPage: React.FC = () => {
                 {customerTransactions.length > 0 ? (
                     <ul className="space-y-2 max-h-96 overflow-y-auto">
                         {customerTransactions.map(tx => (
-                            <li key={tx.id} className="p-3 border rounded-md flex justify-between items-center bg-white">
+                            <li key={tx.id} className="p-3 border border-border rounded-md flex justify-between items-center bg-background">
                                 <div className="flex-1">
                                     <p className="font-medium text-textPrimary">{tx.description || 'Transaction'}</p>
                                     <p className="text-sm text-textSecondary">{new Date(tx.date).toLocaleDateString()}</p>
-                                    <span className={`font-semibold text-lg ${tx.type === 'Received' ? 'text-red-600' : 'text-green-600'}`}>
+                                    <span className={`font-semibold text-lg ${tx.type === 'Received' ? 'text-danger' : 'text-success'}`}>
                                         {tx.type === 'Received' ? '-' : '+'}₹{tx.amount.toLocaleString()}
                                     </span>
                                 </div>
                                 <div className="space-x-1">
-                                    <button onClick={() => { setSelectedTransaction(tx); setFormState(tx); setIsEditTxModalOpen(true); }} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
-                                    <button onClick={() => handleDeleteTransaction(tx.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
+                                    <button onClick={() => { setSelectedTransaction(tx); setFormState(tx); setIsEditTxModalOpen(true); }} className="p-1 text-warning rounded-full hover:bg-pill-warning-bg"><EditIcon /></button>
+                                    <button onClick={() => handleDeleteTransaction(tx.id)} className="p-1 text-danger rounded-full hover:bg-pill-danger-bg"><TrashIcon /></button>
                                 </div>
                             </li>
                         ))}
@@ -305,7 +305,7 @@ const DailyBusinessPage: React.FC = () => {
                         </select>
                     </div>
                     <div className="text-right">
-                        <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 rounded-md">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Save Changes</button>
                     </div>
                 </form>
@@ -327,7 +327,7 @@ const DailyBusinessPage: React.FC = () => {
                         <textarea name="address" className={formInputStyle} placeholder="Enter full address" onChange={handleFormChange}></textarea>
                     </div>
                     <div className="text-right">
-                        <button type="button" onClick={() => setIsAddCustomerModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="button" onClick={() => setIsAddCustomerModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 rounded-md">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Add Customer</button>
                     </div>
                 </form>
@@ -356,7 +356,7 @@ const DailyBusinessPage: React.FC = () => {
                         </select>
                     </div>
                     <div className="text-right">
-                        <button type="button" onClick={() => { setIsAddTxModalOpen(false); setIsEditTxModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="button" onClick={() => { setIsAddTxModalOpen(false); setIsEditTxModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 rounded-md">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">{isEditTxModalOpen ? "Save Changes" : "Save Transaction"}</button>
                     </div>
                 </form>

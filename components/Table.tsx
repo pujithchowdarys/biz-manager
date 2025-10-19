@@ -12,9 +12,9 @@ const Table = <T,>({ headers, data, renderRow }: TableProps<T>) => {
     <div className="overflow-x-auto bg-surface rounded-lg shadow">
       <table className="w-full min-w-max text-left">
         <thead>
-          <tr className="border-b bg-gray-50">
+          <tr className="border-b border-border bg-table-header">
             {headers.map((header) => (
-              <th key={header} className="p-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">
+              <th key={header} className="p-4 text-sm font-semibold text-textSecondary uppercase tracking-wider">
                 {header}
               </th>
             ))}

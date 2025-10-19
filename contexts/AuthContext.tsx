@@ -14,6 +14,8 @@ interface StoredAccounts {
     [username: string]: UserAccount;
 }
 
+type Theme = 'light' | 'dark';
+
 interface AuthContextType {
   isAuthenticated: boolean;
   supabase: SupabaseClient | null;
@@ -21,6 +23,8 @@ interface AuthContextType {
   logout: () => void;
   signup: (user: string, pass: string, url: string, key: string) => Promise<{ success: boolean; message: string }>;
   getSupabaseUrl: () => string | null;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 }
 
 export const AuthContext = createContext<AuthContextType>(null!);
@@ -44,6 +48,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [currentUserAccount, setCurrentUserAccount] = useState<UserAccount | null>(null);
+
+  // THEME STATE MANAGEMENT
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const savedTheme = localStorage.getItem('theme') as Theme;
+    if (savedTheme) return savedTheme;
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+  };
+
 
   // Effect to check for a logged-in user on app start (session persistence)
   useEffect(() => {
@@ -142,7 +168,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, supabase, login, logout, signup, getSupabaseUrl }}>
+    <AuthContext.Provider value={{ isAuthenticated, supabase, login, logout, signup, getSupabaseUrl, theme, setTheme }}>
       {children}
     </AuthContext.Provider>
   );

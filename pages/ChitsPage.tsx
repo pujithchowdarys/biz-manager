@@ -241,36 +241,36 @@ const ChitsPage: React.FC = () => {
   );
 
   const renderChitRow = (chit: Chit) => (
-    <tr key={chit.id} className="border-b hover:bg-gray-50">
+    <tr key={chit.id} className="border-b border-border hover:bg-table-rowHover">
       <td className="p-4 font-medium text-textPrimary">
         {chit.name}
         <div className="md:hidden mt-2 space-x-2">
             <button onClick={() => navigate(`/chits/${chit.id}`)} className="text-primary hover:underline text-sm">Details</button>
             <button onClick={() => handleOpenLotteryModal(chit)} className="text-secondary hover:underline text-sm">Lottery</button>
-            <button onClick={() => handleOpenModal(setIsEditModalOpen, chit, { ...chit })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon className="h-4 w-4" /></button>
-            <button onClick={() => handleDeleteChit(chit.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4" /></button>
+            <button onClick={() => handleOpenModal(setIsEditModalOpen, chit, { ...chit })} className="p-1 text-warning rounded-full hover:bg-pill-warning-bg"><EditIcon className="h-4 w-4" /></button>
+            <button onClick={() => handleDeleteChit(chit.id)} className="p-1 text-danger rounded-full hover:bg-pill-danger-bg"><TrashIcon className="h-4 w-4" /></button>
         </div>
       </td>
       <td className="p-4 text-textPrimary">₹{chit.total_value.toLocaleString()}</td>
       <td className="p-4 text-textPrimary">{chit.members_count}</td>
-      <td className="p-4 text-green-600">₹{chit.amountCollected.toLocaleString()}</td>
-      <td className="p-4 text-red-600">₹{chit.amountGiven.toLocaleString()}</td>
-      <td className="p-4 font-semibold text-blue-700">₹{(chit.amountCollected - chit.amountGiven).toLocaleString()}</td>
+      <td className="p-4 text-success">₹{chit.amountCollected.toLocaleString()}</td>
+      <td className="p-4 text-danger">₹{chit.amountGiven.toLocaleString()}</td>
+      <td className="p-4 font-semibold text-blue-700 dark:text-blue-400">₹{(chit.amountCollected - chit.amountGiven).toLocaleString()}</td>
       <td className="p-4">
-        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${chit.status === 'Ongoing' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${chit.status === 'Ongoing' ? 'bg-pill-warning-bg text-pill-warning-text' : 'bg-pill-success-bg text-pill-success-text'}`}>
           {chit.status}
         </span>
       </td>
       <td className="p-4 space-x-2 whitespace-nowrap hidden md:table-cell">
         <button onClick={() => navigate(`/chits/${chit.id}`)} className="text-primary hover:underline">Details</button>
         <button onClick={() => handleOpenLotteryModal(chit)} className="text-secondary hover:underline">Lottery</button>
-        <button onClick={() => handleOpenModal(setIsEditModalOpen, chit, { ...chit })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
-        <button onClick={() => handleDeleteChit(chit.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
+        <button onClick={() => handleOpenModal(setIsEditModalOpen, chit, { ...chit })} className="p-1 text-warning rounded-full hover:bg-pill-warning-bg"><EditIcon /></button>
+        <button onClick={() => handleDeleteChit(chit.id)} className="p-1 text-danger rounded-full hover:bg-pill-danger-bg"><TrashIcon /></button>
       </td>
     </tr>
   );
   
-  const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
+  const formInputStyle = "w-full p-2 border border-border rounded-md bg-surface text-textPrimary focus:ring-primary focus:border-primary";
   
   if (!supabase) {
     return <div>Loading database connection...</div>;
@@ -280,7 +280,7 @@ const ChitsPage: React.FC = () => {
     <div>
       <h1 className="text-3xl font-bold mb-6 text-textPrimary">Chits Management</h1>
       {notification && (
-        <div className={`p-4 mb-4 rounded-md ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div className={`p-4 mb-4 rounded-md ${notification.type === 'success' ? 'bg-pill-success-bg text-pill-success-text' : 'bg-pill-danger-bg text-pill-danger-text'}`}>
           {notification.message}
         </div>
       )}
@@ -298,7 +298,7 @@ const ChitsPage: React.FC = () => {
                    <input
                       type="text"
                       placeholder="Search chits..."
-                      className="w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+                      className="w-full p-2 border border-border rounded-md bg-surface text-textPrimary focus:ring-primary focus:border-primary"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -327,9 +327,9 @@ const ChitsPage: React.FC = () => {
                     <span>Select All / Deselect All</span>
                 </label>
             </div>
-            <ul className="space-y-2 max-h-60 overflow-y-auto mb-6 p-2 border rounded-md bg-gray-50">
+            <ul className="space-y-2 max-h-60 overflow-y-auto mb-6 p-2 border border-border rounded-md bg-background">
               {eligibleMembers.map(member => (
-                <li key={member.id} className="p-2 rounded-md hover:bg-gray-100">
+                <li key={member.id} className="p-2 rounded-md hover:bg-black/10">
                     <label className="flex items-center space-x-3 cursor-pointer">
                         <input 
                             type="checkbox"
@@ -346,7 +346,7 @@ const ChitsPage: React.FC = () => {
                 <button 
                     onClick={handleStartDraw} 
                     disabled={selectedLotteryParticipants.length < 2}
-                    className="px-6 py-2 bg-secondary text-white font-semibold rounded-md hover:bg-green-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className="px-6 py-2 bg-secondary text-white font-semibold rounded-md hover:bg-green-600 transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
                     Start Draw ({selectedLotteryParticipants.length})
                 </button>
@@ -369,7 +369,7 @@ const ChitsPage: React.FC = () => {
             <button 
                 onClick={handleConfirmWinner}
                 disabled={!lotteryWinner}
-                className="px-6 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
             >
                 Confirm Winner
             </button>
@@ -396,7 +396,7 @@ const ChitsPage: React.FC = () => {
                   <input type="number" name="duration_months" className={formInputStyle} value={formState.duration_months || ''} onChange={handleFormChange} required/>
               </div>
               <div className="text-right">
-                  <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                  <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 rounded-md">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Save Changes</button>
               </div>
           </form>
@@ -422,7 +422,7 @@ const ChitsPage: React.FC = () => {
                   <input type="number" name="duration_months" className={formInputStyle} placeholder="e.g., 10" onChange={handleFormChange} required/>
               </div>
               <div className="text-right">
-                  <button type="button" onClick={() => setIsAddChitModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                  <button type="button" onClick={() => setIsAddChitModalOpen(false)} className="px-4 py-2 mr-2 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 rounded-md">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">Create Chit</button>
               </div>
           </form>

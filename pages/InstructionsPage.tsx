@@ -120,7 +120,7 @@ CREATE TABLE loan_transactions (
               <li>Copy the entire SQL script below and paste it into the query editor.</li>
               <li>Click the <strong>RUN</strong> button to execute the script and create all the tables.</li>
             </ol>
-            <pre className="bg-gray-100 p-4 rounded-md text-sm overflow-x-auto mt-4">
+            <pre className="bg-codeBg p-4 rounded-md text-sm overflow-x-auto mt-4">
               <code className="text-textPrimary">{sqlSchema.trim()}</code>
             </pre>
 

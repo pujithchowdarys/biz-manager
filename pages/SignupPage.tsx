@@ -36,7 +36,7 @@ const SignupPage: React.FC = () => {
     }
   };
   
-  const formInputStyle = "w-full px-3 py-2 mt-1 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
+  const formInputStyle = "w-full px-3 py-2 mt-1 border border-border rounded-md bg-surface text-textPrimary focus:ring-primary focus:border-primary";
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -49,7 +49,7 @@ const SignupPage: React.FC = () => {
             </p>
         </div>
 
-        <div className="bg-primary-light border-l-4 border-primary text-primary-dark p-4 rounded-md">
+        <div className="bg-primary-light border-l-4 border-primary text-primary-dark p-4 rounded-md dark:text-textPrimary">
             <p className="text-sm">
                 First time setup? Follow our guide to create your database.
                 <Link to="/instructions" className="font-bold underline ml-2 whitespace-nowrap">
@@ -76,10 +76,10 @@ const SignupPage: React.FC = () => {
             <input type="text" placeholder="eyJhbGciOi..." value={supabaseKey} onChange={(e) => setSupabaseKey(e.target.value)} className={formInputStyle} required />
           </div>
 
-          {error && <p className="text-sm text-center text-red-500">{error}</p>}
+          {error && <p className="text-sm text-center text-danger">{error}</p>}
 
           <div>
-            <button type="submit" disabled={loading} className="w-full px-4 py-2 font-semibold text-white transition-colors duration-200 rounded-md bg-primary hover:bg-primary-hover disabled:bg-gray-400">
+            <button type="submit" disabled={loading} className="w-full px-4 py-2 font-semibold text-white transition-colors duration-200 rounded-md bg-primary hover:bg-primary-hover disabled:bg-gray-400 dark:disabled:bg-gray-600">
                 {loading ? 'Verifying & Signing Up...' : 'Sign Up'}
             </button>
           </div>

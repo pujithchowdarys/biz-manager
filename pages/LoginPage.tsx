@@ -52,7 +52,7 @@ const LoginPage: React.FC = () => {
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-2 mt-1 border border-border rounded-md bg-surface text-textPrimary focus:ring-primary focus:border-primary"
             />
           </div>
           <div>
@@ -70,15 +70,15 @@ const LoginPage: React.FC = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-2 mt-1 border border-border rounded-md bg-surface text-textPrimary focus:ring-primary focus:border-primary"
             />
           </div>
-          {error && <p className="text-sm text-center text-red-500">{error}</p>}
+          {error && <p className="text-sm text-center text-danger">{error}</p>}
           <div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-2 font-semibold text-white transition-colors duration-200 rounded-md bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-light disabled:bg-gray-400"
+              className="w-full px-4 py-2 font-semibold text-white transition-colors duration-200 rounded-md bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-light disabled:bg-gray-400 dark:disabled:bg-gray-600"
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>
@@ -91,7 +91,7 @@ const LoginPage: React.FC = () => {
                   Sign up
                 </Link>
             </p>
-            <p className="text-xs text-textSecondary pt-2 border-t">
+            <p className="text-xs text-textSecondary pt-2 border-t border-border">
                 First time on this device? You must use the "Sign up" option again with your original credentials and Supabase details to sync your account.
             </p>
          </div>

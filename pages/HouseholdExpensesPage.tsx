@@ -115,32 +115,32 @@ const HouseholdExpensesPage: React.FC = () => {
     );
 
     const renderExpenseRow = (expense: Expense) => (
-        <tr key={expense.id} className="border-b hover:bg-gray-50">
+        <tr key={expense.id} className="border-b border-border hover:bg-table-rowHover">
             <td className="p-4 text-textSecondary">{new Date(expense.expense_date).toLocaleDateString()}</td>
             <td className="p-4 font-medium text-textPrimary">
                 {expense.description}
                 <div className="md:hidden mt-2 space-x-2">
-                    <button onClick={() => handleOpenModal(setIsEditModalOpen, expense, { ...expense })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon className="h-4 w-4" /></button>
-                    <button onClick={() => handleDeleteExpense(expense.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon className="h-4 w-4" /></button>
+                    <button onClick={() => handleOpenModal(setIsEditModalOpen, expense, { ...expense })} className="p-1 text-warning rounded-full hover:bg-pill-warning-bg"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={() => handleDeleteExpense(expense.id)} className="p-1 text-danger rounded-full hover:bg-pill-danger-bg"><TrashIcon className="h-4 w-4" /></button>
                 </div>
             </td>
             <td className="p-4 text-textSecondary">{expense.category}</td>
-            <td className={`p-4 font-semibold ${expense.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
+            <td className={`p-4 font-semibold ${expense.type === 'Income' ? 'text-success' : 'text-danger'}`}>
                 ₹{expense.amount.toLocaleString()}
             </td>
             <td className="p-4">
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${expense.type === 'Income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${expense.type === 'Income' ? 'bg-pill-success-bg text-pill-success-text' : 'bg-pill-danger-bg text-pill-danger-text'}`}>
                     {expense.type}
                 </span>
             </td>
             <td className="p-4 space-x-2 hidden md:table-cell">
-                <button onClick={() => handleOpenModal(setIsEditModalOpen, expense, { ...expense })} className="p-1 text-yellow-600 hover:bg-yellow-100 rounded-full"><EditIcon /></button>
-                <button onClick={() => handleDeleteExpense(expense.id)} className="p-1 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
+                <button onClick={() => handleOpenModal(setIsEditModalOpen, expense, { ...expense })} className="p-1 text-warning rounded-full hover:bg-pill-warning-bg"><EditIcon /></button>
+                <button onClick={() => handleDeleteExpense(expense.id)} className="p-1 text-danger rounded-full hover:bg-pill-danger-bg"><TrashIcon /></button>
             </td>
         </tr>
     );
 
-    const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
+    const formInputStyle = "w-full p-2 border border-border rounded-md bg-surface text-textPrimary focus:ring-primary focus:border-primary";
 
     if (!supabase) {
         return <div>Loading database connection...</div>;
@@ -150,7 +150,7 @@ const HouseholdExpensesPage: React.FC = () => {
         <div>
             <h1 className="text-3xl font-bold mb-6 text-textPrimary">Household Expenses</h1>
             {notification && (
-                <div className={`p-4 mb-4 rounded-md ${notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <div className={`p-4 mb-4 rounded-md ${notification.type === 'success' ? 'bg-pill-success-bg text-pill-success-text' : 'bg-pill-danger-bg text-pill-danger-text'}`}>
                 {notification.message}
                 </div>
             )}
@@ -167,7 +167,7 @@ const HouseholdExpensesPage: React.FC = () => {
                          <input
                             type="text"
                             placeholder="Search by description or category..."
-                            className="w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary"
+                            className="w-full p-2 border border-border rounded-md bg-surface text-textPrimary focus:ring-primary focus:border-primary"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -207,7 +207,7 @@ const HouseholdExpensesPage: React.FC = () => {
                         </select>
                     </div>
                     <div className="text-right">
-                        <button type="button" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 rounded-md">Cancel</button>
+                        <button type="button" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} className="px-4 py-2 mr-2 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 rounded-md">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">{isEditModalOpen ? 'Save Changes' : 'Save'}</button>
                     </div>
                 </form>

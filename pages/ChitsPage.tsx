@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
 import LotteryDraw from '../components/LotteryDraw';
-import { supabase } from '../supabaseClient';
+import { AuthContext } from '../contexts/AuthContext';
 import { Chit, ChitMember } from '../types';
 import { EditIcon, TrashIcon } from '../constants';
 
 const ChitsPage: React.FC = () => {
+  const { supabase } = useContext(AuthContext);
   const [chits, setChits] = useState<Chit[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +35,7 @@ const ChitsPage: React.FC = () => {
   };
 
   const fetchData = useCallback(async () => {
+    if (!supabase) return;
     setLoading(true);
     try {
       const { data: chitsData, error: chitsError } = await supabase
@@ -86,11 +89,13 @@ const ChitsPage: React.FC = () => {
     } finally {
         setLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (supabase) {
+        fetchData();
+    }
+  }, [fetchData, supabase]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormState({ ...formState, [e.target.name]: e.target.value });
@@ -104,6 +109,7 @@ const ChitsPage: React.FC = () => {
   
   const handleAddChit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     const { error } = await supabase.from('chits').insert([{
         name: formState.name,
         total_value: parseFloat(formState.total_value),
@@ -120,7 +126,7 @@ const ChitsPage: React.FC = () => {
 
   const handleUpdateChit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedChit) return;
+    if (!selectedChit || !supabase) return;
     const { error } = await supabase.from('chits').update({
         name: formState.name,
         total_value: parseFloat(formState.total_value),
@@ -136,6 +142,7 @@ const ChitsPage: React.FC = () => {
   };
   
   const handleDeleteChit = async (chitId: number) => {
+    if (!supabase) return;
     if (window.confirm('Are you sure you want to delete this chit group? This will delete all members and transactions associated with it.')) {
         const { data: members, error: membersError } = await supabase.from('chit_members').select('id').eq('chit_id', chitId);
         if (membersError) { 
@@ -162,6 +169,7 @@ const ChitsPage: React.FC = () => {
   };
 
   const handleOpenLotteryModal = async (chit: Chit) => {
+    if (!supabase) return;
     setSelectedChit(chit);
     const { data, error } = await supabase
         .from('chit_members')
@@ -210,7 +218,7 @@ const ChitsPage: React.FC = () => {
   };
 
   const handleConfirmWinner = async () => {
-    if (!selectedChit || !lotteryWinner) return;
+    if (!selectedChit || !lotteryWinner || !supabase) return;
     await supabase.from('chit_members').update({ lottery_status: 'Won' }).eq('id', lotteryWinner.id);
     await supabase.from('chit_transactions').insert([{
         member_id: lotteryWinner.id,
@@ -263,6 +271,10 @@ const ChitsPage: React.FC = () => {
   );
   
   const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
+  
+  if (!supabase) {
+    return <div>Loading database connection...</div>;
+  }
 
   return (
     <div>

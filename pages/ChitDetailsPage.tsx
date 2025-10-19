@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { supabase } from '../supabaseClient';
+import { AuthContext } from '../contexts/AuthContext';
 import { Chit, ChitMember, ChitTransaction } from '../types';
 import { EditIcon, TrashIcon } from '../constants';
 
 
 const ChitDetailsPage: React.FC = () => {
+    const { supabase } = useContext(AuthContext);
     const { chitId } = useParams<{ chitId: string }>();
     const [chit, setChit] = useState<Chit | null>(null);
     const [members, setMembers] = useState<ChitMember[]>([]);
@@ -32,7 +34,7 @@ const ChitDetailsPage: React.FC = () => {
     };
 
     const fetchData = useCallback(async () => {
-        if (!chitId) return;
+        if (!chitId || !supabase) return;
         setLoading(true);
 
         try {
@@ -76,11 +78,13 @@ const ChitDetailsPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [chitId]);
+    }, [chitId, supabase]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (supabase) {
+            fetchData();
+        }
+    }, [fetchData, supabase]);
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormState({ ...formState, [e.target.name]: e.target.value });
@@ -94,6 +98,7 @@ const ChitDetailsPage: React.FC = () => {
     
     const handleAddMember = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!supabase) return;
         const { error } = await supabase.from('chit_members').insert([{
             chit_id: parseInt(chitId || ''),
             name: formState.name,
@@ -110,7 +115,7 @@ const ChitDetailsPage: React.FC = () => {
     
     const handleUpdateMember = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!selectedMember) return;
+        if(!selectedMember || !supabase) return;
         const { error } = await supabase.from('chit_members').update({
              name: formState.name,
             phone: formState.phone,
@@ -125,6 +130,7 @@ const ChitDetailsPage: React.FC = () => {
     };
     
     const handleDeleteMember = async (memberId: number) => {
+        if (!supabase) return;
         if (window.confirm('Are you sure you want to delete this member and all their transactions?')) {
             await supabase.from('chit_transactions').delete().eq('member_id', memberId);
             const { error } = await supabase.from('chit_members').delete().eq('id', memberId);
@@ -140,7 +146,7 @@ const ChitDetailsPage: React.FC = () => {
     
     const handleAddTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!selectedMember) return;
+        if(!selectedMember || !supabase) return;
         const { error } = await supabase.from('chit_transactions').insert([{
             member_id: selectedMember.id,
             date: formState.date,
@@ -157,7 +163,7 @@ const ChitDetailsPage: React.FC = () => {
     
     const handleUpdateTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedTransaction) return;
+        if (!selectedTransaction || !supabase) return;
         const { error } = await supabase.from('chit_transactions').update({
             date: formState.date,
             description: formState.description,
@@ -173,6 +179,7 @@ const ChitDetailsPage: React.FC = () => {
     };
 
     const handleDeleteTransaction = async (transactionId: number) => {
+        if (!supabase) return;
         if (window.confirm('Are you sure you want to delete this transaction?')) {
             const { error } = await supabase.from('chit_transactions').delete().eq('id', transactionId);
             if (error) {
@@ -187,6 +194,7 @@ const ChitDetailsPage: React.FC = () => {
     };
 
     const handleUpdateLotteryStatus = async (memberId: number, newStatus: 'Pending' | 'Won') => {
+        if (!supabase) return;
         const { error } = await supabase
             .from('chit_members')
             .update({ lottery_status: newStatus })

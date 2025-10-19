@@ -1,7 +1,11 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-export const supabaseUrl = 'https://evgvsqcmywfjgzytocmb.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2Z3ZzcWNteXdmamd6eXRvY21iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MTYyMTEsImV4cCI6MjA3NjA5MjIxMX0.n4UcNT0w5u5EGN8K-h8zBWKhCDrckkNanuwvmkF4l-A';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// The Supabase client is no longer created here with static credentials.
+// Instead, we export a factory function that can be called with user-provided credentials.
+export const createSupabaseClient = (url: string, key: string): SupabaseClient => {
+  if (!url || !key) {
+    throw new Error("Supabase URL and Key are required.");
+  }
+  return createClient(url, key);
+};

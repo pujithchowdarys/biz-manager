@@ -1,11 +1,11 @@
 
 import React, { useState, useContext } from 'react';
-import { supabaseUrl } from '../supabaseClient';
 import { AuthContext } from '../contexts/AuthContext';
 
 const SettingsPage: React.FC = () => {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const { logout } = useContext(AuthContext);
+  const { logout, getSupabaseUrl } = useContext(AuthContext);
+  const supabaseUrl = getSupabaseUrl();
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
@@ -13,8 +13,10 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(supabaseUrl);
-    showNotification('Supabase URL copied to clipboard!', 'success');
+    if (supabaseUrl) {
+      navigator.clipboard.writeText(supabaseUrl);
+      showNotification('Supabase URL copied to clipboard!', 'success');
+    }
   }
 
   const handleLogout = () => {
@@ -38,19 +40,19 @@ const SettingsPage: React.FC = () => {
           <h2 className="text-xl font-semibold text-textPrimary border-b pb-2 mb-4">Database Connection</h2>
           <div className="space-y-4">
             <div>
-              <label htmlFor="api-key" className="block text-sm font-medium text-textSecondary mb-1">Supabase Project URL</label>
+              <label htmlFor="api-key" className="block text-sm font-medium text-textSecondary mb-1">Your Supabase Project URL</label>
               <div className="flex gap-2">
                 <input 
                   type="text" 
                   id="api-key" 
-                  value={supabaseUrl}
+                  value={supabaseUrl || 'Not configured'}
                   readOnly
                   className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white"
                 />
-                <button onClick={handleCopy} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors">Copy</button>
+                <button onClick={handleCopy} disabled={!supabaseUrl} className="bg-primary-light text-primary font-semibold px-4 py-2 rounded-md hover:bg-blue-200 transition-colors disabled:bg-gray-200 disabled:cursor-not-allowed">Copy</button>
               </div>
                <p className="text-xs text-textSecondary mt-2">
-                 Your application is connected to this Supabase project. Connection details are managed in the `supabaseClient.ts` file.
+                 This is the Supabase project your application is currently connected to.
                </p>
             </div>
           </div>
@@ -59,10 +61,9 @@ const SettingsPage: React.FC = () => {
         {/* Manage Account */}
         <div className="bg-surface p-6 rounded-xl shadow-md">
           <h2 className="text-xl font-semibold text-textPrimary border-b pb-2 mb-4">Manage Account</h2>
-          <p className="text-textSecondary">You are currently logged in as the admin user.</p>
+          <p className="text-textSecondary">You can log out to connect to a different database or account.</p>
           <div className="mt-4">
-            <button className="text-primary hover:underline" disabled>Change Password</button>
-            <button onClick={handleLogout} className="ml-4 text-red-600 hover:underline">Logout</button>
+            <button onClick={handleLogout} className="text-red-600 hover:underline">Logout</button>
           </div>
         </div>
 

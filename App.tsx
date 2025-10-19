@@ -13,6 +13,8 @@ import SummaryReportPage from './pages/SummaryReportPage';
 import SettingsPage from './pages/SettingsPage';
 import ChitDetailsPage from './pages/ChitDetailsPage';
 import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import InstructionsPage from './pages/InstructionsPage';
 
 // This component checks if the user is authenticated.
 // If not, it redirects to the login page.
@@ -40,6 +42,8 @@ const App: React.FC = () => {
       <HashRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/instructions" element={<InstructionsPage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
               <Route path="/" element={<HomePage />} />

@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { supabase } from '../supabaseClient';
+import { AuthContext } from '../contexts/AuthContext';
 import { Loan, LoanTransaction } from '../types';
 import { EditIcon, TrashIcon } from '../constants';
 
 const LoansPage: React.FC = () => {
+    const { supabase } = useContext(AuthContext);
     const [loans, setLoans] = useState<Loan[]>([]);
     const [transactions, setTransactions] = useState<LoanTransaction[]>([]);
     const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ const LoansPage: React.FC = () => {
     };
 
     const fetchData = useCallback(async () => {
+        if (!supabase) return;
         setLoading(true);
         const { data: loansData, error: loansError } = await supabase.from('loans').select('*').order('name');
         const { data: txData, error: txError } = await supabase.from('loan_transactions').select('*');
@@ -46,11 +49,13 @@ const LoansPage: React.FC = () => {
             setLoans(loansWithTotals);
         }
         setLoading(false);
-    }, []);
+    }, [supabase]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (supabase) {
+            fetchData();
+        }
+    }, [fetchData, supabase]);
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormState({ ...formState, [e.target.name]: e.target.value });
@@ -64,6 +69,7 @@ const LoansPage: React.FC = () => {
 
     const handleAddLoan = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!supabase) return;
         const { data, error } = await supabase.from('loans').insert([{
             name: formState.name,
             principal: parseFloat(formState.principal),
@@ -90,7 +96,7 @@ const LoansPage: React.FC = () => {
     
     const handleUpdateLoan = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!selectedLoan) return;
+        if(!selectedLoan || !supabase) return;
         const { error } = await supabase.from('loans').update({
             name: formState.name,
             interest_rate: parseFloat(formState.interest_rate),
@@ -105,6 +111,7 @@ const LoansPage: React.FC = () => {
     };
 
     const handleDeleteLoan = async (loanId: number) => {
+        if (!supabase) return;
         if (window.confirm('Are you sure you want to delete this loan and all its payments?')) {
             await supabase.from('loan_transactions').delete().eq('loan_id', loanId);
             const { error } = await supabase.from('loans').delete().eq('id', loanId);
@@ -120,7 +127,7 @@ const LoansPage: React.FC = () => {
 
     const handleAddPayment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedLoan) return;
+        if (!selectedLoan || !supabase) return;
         const { error } = await supabase.from('loan_transactions').insert([{
             loan_id: selectedLoan.id,
             date: formState.date,
@@ -138,7 +145,7 @@ const LoansPage: React.FC = () => {
 
     const handleUpdateTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedTransaction) return;
+        if (!selectedTransaction || !supabase) return;
         const { error } = await supabase.from('loan_transactions').update({
             date: formState.date,
             amount: parseFloat(formState.amount),
@@ -153,6 +160,7 @@ const LoansPage: React.FC = () => {
     };
 
     const handleDeleteTransaction = async (transactionId: number) => {
+        if (!supabase) return;
         if (window.confirm('Are you sure you want to delete this transaction?')) {
             const { error } = await supabase.from('loan_transactions').delete().eq('id', transactionId);
             if (error) {
@@ -215,6 +223,10 @@ const LoansPage: React.FC = () => {
 
     const loanTransactions = selectedLoan ? transactions.filter(tx => tx.loan_id === selectedLoan.id) : [];
     const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
+    
+    if (!supabase) {
+        return <div>Loading database connection...</div>;
+    }
 
     return (
         <div>

@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { supabase } from '../supabaseClient';
+import { AuthContext } from '../contexts/AuthContext';
 import { Customer, CustomerTransaction } from '../types';
 import { EditIcon, TrashIcon } from '../constants';
 
 const DailyBusinessPage: React.FC = () => {
+    const { supabase } = useContext(AuthContext);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
     const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ const DailyBusinessPage: React.FC = () => {
     };
     
     const fetchData = useCallback(async () => {
+        if (!supabase) return;
         setLoading(true);
         const { data: customersData, error: customersError } = await supabase
             .from('customers')
@@ -52,11 +55,13 @@ const DailyBusinessPage: React.FC = () => {
             setCustomers(customersWithTotals);
         }
         setLoading(false);
-    }, []);
+    }, [supabase]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (supabase) {
+            fetchData();
+        }
+    }, [fetchData, supabase]);
 
     const handleOpenModal = (modalSetter: React.Dispatch<React.SetStateAction<boolean>>, customer: Customer | null = null, initialFormState = {}) => {
         setSelectedCustomer(customer);
@@ -70,6 +75,7 @@ const DailyBusinessPage: React.FC = () => {
 
     const handleAddCustomer = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!supabase) return;
         const { error } = await supabase.from('customers').insert([
             { name: formState.name, phone: formState.phone, address: formState.address, status: 'Active' }
         ]);
@@ -82,7 +88,7 @@ const DailyBusinessPage: React.FC = () => {
     
     const handleUpdateCustomer = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedCustomer) return;
+        if (!selectedCustomer || !supabase) return;
         const { error } = await supabase.from('customers').update({
             name: formState.name,
             phone: formState.phone,
@@ -98,6 +104,7 @@ const DailyBusinessPage: React.FC = () => {
     };
     
     const handleDeleteCustomer = async (customerId: number) => {
+        if (!supabase) return;
         if (window.confirm('Are you sure you want to delete this customer and all their transactions? This action cannot be undone.')) {
             await supabase.from('customer_transactions').delete().eq('customer_id', customerId);
             const { error } = await supabase.from('customers').delete().eq('id', customerId);
@@ -113,7 +120,7 @@ const DailyBusinessPage: React.FC = () => {
 
     const handleAddTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedCustomer) return;
+        if (!selectedCustomer || !supabase) return;
         const { error } = await supabase.from('customer_transactions').insert([{
             customer_id: selectedCustomer.id,
             date: formState.date,
@@ -131,7 +138,7 @@ const DailyBusinessPage: React.FC = () => {
 
     const handleUpdateTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedTransaction) return;
+        if (!selectedTransaction || !supabase) return;
         const { error } = await supabase.from('customer_transactions').update({
             date: formState.date,
             amount: parseFloat(formState.amount),
@@ -147,6 +154,7 @@ const DailyBusinessPage: React.FC = () => {
     };
 
     const handleDeleteTransaction = async (transactionId: number) => {
+        if (!supabase) return;
         if (window.confirm('Are you sure you want to delete this transaction?')) {
             const { error } = await supabase.from('customer_transactions').delete().eq('id', transactionId);
             if (error) {
@@ -210,6 +218,10 @@ const DailyBusinessPage: React.FC = () => {
             .filter(tx => tx.customer_id === selectedCustomer.id)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         : [];
+        
+    if (!supabase) {
+        return <div>Loading database connection...</div>;
+    }
 
     return (
         <div>

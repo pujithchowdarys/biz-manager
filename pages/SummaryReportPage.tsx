@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { supabase } from '../supabaseClient';
+import { AuthContext } from '../contexts/AuthContext';
 
 interface SummaryData {
     business: { totalGiven: number, totalReceived: number, balance: number },
@@ -11,10 +12,12 @@ interface SummaryData {
 }
 
 const SummaryReportPage: React.FC = () => {
+    const { supabase } = useContext(AuthContext);
     const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchSummaryData = useCallback(async () => {
+        if (!supabase) return;
         setLoading(true);
         // In a real app, these complex aggregations should be done in the database with RPC functions
         // For simplicity, we are doing them on the client here.
@@ -55,7 +58,7 @@ const SummaryReportPage: React.FC = () => {
                 if (ex.type === 'Income') newSummary.household.totalIncome += ex.amount;
                 if (ex.type === 'Expense') newSummary.household.totalExpenses += ex.amount;
             });
-            newSummary.household.net = newSummary.household.totalIncome - newSummary.household.totalExpenses;
+            newSummary.household.net = newSummary.household.totalIncome - newSummary.household.net;
 
             // Loans Summary
             const loansWithPaid = loansData?.map(loan => {
@@ -85,11 +88,13 @@ const SummaryReportPage: React.FC = () => {
         }
 
         setLoading(false);
-    }, []);
+    }, [supabase]);
 
     useEffect(() => {
-        fetchSummaryData();
-    }, [fetchSummaryData]);
+        if (supabase) {
+            fetchSummaryData();
+        }
+    }, [fetchSummaryData, supabase]);
 
     const summaryLinks: { [key: string]: string } = {
         "Business Summary": "/daily-business",

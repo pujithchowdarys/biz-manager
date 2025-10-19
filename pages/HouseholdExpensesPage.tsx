@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { supabase } from '../supabaseClient';
+import { AuthContext } from '../contexts/AuthContext';
 import { Expense } from '../types';
 import { EditIcon, TrashIcon } from '../constants';
 
 const HouseholdExpensesPage: React.FC = () => {
+    const { supabase } = useContext(AuthContext);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +24,7 @@ const HouseholdExpensesPage: React.FC = () => {
     };
 
     const fetchData = useCallback(async () => {
+        if (!supabase) return;
         setLoading(true);
         const { data, error } = await supabase
             .from('expenses')
@@ -31,11 +34,13 @@ const HouseholdExpensesPage: React.FC = () => {
         if (error) console.error(error);
         else setExpenses(data || []);
         setLoading(false);
-    }, []);
+    }, [supabase]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (supabase) {
+            fetchData();
+        }
+    }, [fetchData, supabase]);
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormState({ ...formState, [e.target.name]: e.target.value });
@@ -49,6 +54,7 @@ const HouseholdExpensesPage: React.FC = () => {
 
     const handleAddExpense = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!supabase) return;
         const { error } = await supabase.from('expenses').insert([{
             expense_date: formState.expense_date,
             description: formState.description,
@@ -65,7 +71,7 @@ const HouseholdExpensesPage: React.FC = () => {
 
     const handleUpdateExpense = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedExpense) return;
+        if (!selectedExpense || !supabase) return;
         const { error } = await supabase.from('expenses').update({
             expense_date: formState.expense_date,
             description: formState.description,
@@ -81,6 +87,7 @@ const HouseholdExpensesPage: React.FC = () => {
     };
 
     const handleDeleteExpense = async (expenseId: number) => {
+        if (!supabase) return;
         if (window.confirm('Are you sure you want to delete this transaction?')) {
             const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
             if (error) {
@@ -134,6 +141,10 @@ const HouseholdExpensesPage: React.FC = () => {
     );
 
     const formInputStyle = "w-full p-2 border rounded-md bg-white text-textPrimary focus:ring-primary focus:border-primary";
+
+    if (!supabase) {
+        return <div>Loading database connection...</div>;
+    }
 
     return (
         <div>

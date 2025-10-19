@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import StatCard from '../components/StatCard';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
+import LotteryDraw from '../components/LotteryDraw';
 import { supabase } from '../supabaseClient';
 import { Chit, ChitMember } from '../types';
 import { EditIcon, TrashIcon } from '../constants';
@@ -14,8 +15,13 @@ const ChitsPage: React.FC = () => {
   const [isAddChitModalOpen, setIsAddChitModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLotteryModalOpen, setIsLotteryModalOpen] = useState(false);
+  const [isLotteryDrawModalOpen, setIsLotteryDrawModalOpen] = useState(false);
+  
   const [selectedChit, setSelectedChit] = useState<Chit | null>(null);
   const [eligibleMembers, setEligibleMembers] = useState<ChitMember[]>([]);
+  const [selectedLotteryParticipants, setSelectedLotteryParticipants] = useState<ChitMember[]>([]);
+  const [lotteryWinner, setLotteryWinner] = useState<ChitMember | null>(null);
+  
   const [formState, setFormState] = useState<any>({});
   const [overview, setOverview] = useState({ totalCollected: 0, totalGiven: 0, totalSavings: 0 });
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -163,27 +169,61 @@ const ChitsPage: React.FC = () => {
         .eq('chit_id', chit.id)
         .eq('lottery_status', 'Pending');
     
-    if (error) console.error(error);
-    else setEligibleMembers(data as ChitMember[]);
-    setIsLotteryModalOpen(true);
+    if (error) {
+        console.error(error);
+    } else {
+        const members = (data as ChitMember[]) || [];
+        setEligibleMembers(members);
+        setSelectedLotteryParticipants(members); // Select all by default
+        setIsLotteryModalOpen(true);
+    }
   };
 
-  const handleDrawWinner = async () => {
-    if (!selectedChit || eligibleMembers.length === 0) return;
-    const winner = eligibleMembers[Math.floor(Math.random() * eligibleMembers.length)];
+  const handleLotterySelectionChange = (memberId: number) => {
+    setSelectedLotteryParticipants(prev => {
+        const isSelected = prev.some(p => p.id === memberId);
+        if (isSelected) {
+            return prev.filter(p => p.id !== memberId);
+        } else {
+            const memberToAdd = eligibleMembers.find(m => m.id === memberId);
+            return memberToAdd ? [...prev, memberToAdd] : prev;
+        }
+    });
+  };
 
-    if (window.confirm(`The winner is ${winner.name}. Confirm?`)) {
-        await supabase.from('chit_members').update({ lottery_status: 'Won' }).eq('id', winner.id);
-        await supabase.from('chit_transactions').insert([{
-            member_id: winner.id,
-            date: new Date().toISOString().split('T')[0],
-            amount: selectedChit.total_value,
-            type: 'Received',
-            description: 'Lottery Prize'
-        }]);
-        setIsLotteryModalOpen(false);
-        fetchData();
+  const handleSelectAllLottery = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+        setSelectedLotteryParticipants(eligibleMembers);
+    } else {
+        setSelectedLotteryParticipants([]);
     }
+  };
+
+  const handleStartDraw = () => {
+    if (selectedLotteryParticipants.length < 2) {
+        showNotification('Please select at least two members for the draw.', 'error');
+        return;
+    }
+    setIsLotteryModalOpen(false);
+    setLotteryWinner(null);
+    setIsLotteryDrawModalOpen(true);
+  };
+
+  const handleConfirmWinner = async () => {
+    if (!selectedChit || !lotteryWinner) return;
+    await supabase.from('chit_members').update({ lottery_status: 'Won' }).eq('id', lotteryWinner.id);
+    await supabase.from('chit_transactions').insert([{
+        member_id: lotteryWinner.id,
+        date: new Date().toISOString().split('T')[0],
+        amount: selectedChit.total_value,
+        type: 'Received',
+        description: 'Lottery Prize'
+    }]);
+    
+    showNotification(`${lotteryWinner.name} has won the lottery!`, 'success');
+    setIsLotteryDrawModalOpen(false);
+    setLotteryWinner(null);
+    fetchData();
   };
 
   const tableHeaders = ['Chit Name', 'Total Value', 'Members', 'Collected', 'Given', 'Savings', 'Status', 'Actions'];
@@ -257,21 +297,71 @@ const ChitsPage: React.FC = () => {
 
       {loading ? <p>Loading...</p> : <Table headers={tableHeaders} data={filteredChits} renderRow={renderChitRow} />}
 
-      {/* Lottery Modal */}
-      <Modal isOpen={isLotteryModalOpen} onClose={() => setIsLotteryModalOpen(false)} title={`Lottery for ${selectedChit?.name}`}>
-        <h3 className="text-lg font-medium text-textPrimary mb-4">Eligible Members</h3>
+      {/* Lottery Setup Modal */}
+      <Modal isOpen={isLotteryModalOpen} onClose={() => setIsLotteryModalOpen(false)} title={`Lottery Setup for ${selectedChit?.name}`}>
+        <h3 className="text-lg font-medium text-textPrimary mb-2">Select Participants</h3>
+        <p className="text-sm text-textSecondary mb-4">Choose which eligible members will enter this lottery draw.</p>
+        
         {eligibleMembers.length > 0 ? (
           <>
-            <ul className="space-y-2 max-h-60 overflow-y-auto mb-4">
-              {eligibleMembers.map(member => <li key={member.id} className="p-2 border rounded-md">{member.name}</li>)}
+            <div className="mb-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                        type="checkbox"
+                        checked={eligibleMembers.length > 0 && selectedLotteryParticipants.length === eligibleMembers.length}
+                        onChange={handleSelectAllLottery}
+                        className="h-5 w-5 rounded text-primary focus:ring-primary"
+                    />
+                    <span>Select All / Deselect All</span>
+                </label>
+            </div>
+            <ul className="space-y-2 max-h-60 overflow-y-auto mb-6 p-2 border rounded-md bg-gray-50">
+              {eligibleMembers.map(member => (
+                <li key={member.id} className="p-2 rounded-md hover:bg-gray-100">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                        <input 
+                            type="checkbox"
+                            checked={selectedLotteryParticipants.some(p => p.id === member.id)}
+                            onChange={() => handleLotterySelectionChange(member.id)}
+                            className="h-5 w-5 rounded text-primary focus:ring-primary"
+                        />
+                        <span className="font-medium">{member.name}</span>
+                    </label>
+                </li>
+              ))}
             </ul>
             <div className="text-right">
-              <button onClick={handleDrawWinner} className="px-4 py-2 bg-green-100 text-green-800 font-semibold rounded-md hover:bg-green-200">Draw Winner</button>
+                <button 
+                    onClick={handleStartDraw} 
+                    disabled={selectedLotteryParticipants.length < 2}
+                    className="px-6 py-2 bg-secondary text-white font-semibold rounded-md hover:bg-green-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                    Start Draw ({selectedLotteryParticipants.length})
+                </button>
             </div>
           </>
         ) : (
           <p>No eligible members remaining for the lottery.</p>
         )}
+      </Modal>
+
+      {/* Lottery Draw Modal */}
+      <Modal isOpen={isLotteryDrawModalOpen} onClose={() => setIsLotteryDrawModalOpen(false)} title="Lottery In Progress...">
+        {isLotteryDrawModalOpen && selectedLotteryParticipants.length > 0 && (
+            <LotteryDraw 
+                participants={selectedLotteryParticipants}
+                onWinnerSelected={(winner) => setLotteryWinner(winner)}
+            />
+        )}
+        <div className="text-center mt-4">
+            <button 
+                onClick={handleConfirmWinner}
+                disabled={!lotteryWinner}
+                className="px-6 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+                Confirm Winner
+            </button>
+        </div>
       </Modal>
 
       {/* Edit Chit Modal */}

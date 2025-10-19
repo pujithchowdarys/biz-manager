@@ -84,12 +84,17 @@ const LoginPage: React.FC = () => {
             </button>
           </div>
         </form>
-         <p className="text-sm text-center text-textSecondary">
-            Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-primary hover:underline">
-              Sign up
-            </Link>
-          </p>
+         <div className="text-center space-y-3">
+            <p className="text-sm text-textSecondary">
+                Don't have an account?{' '}
+                <Link to="/signup" className="font-medium text-primary hover:underline">
+                  Sign up
+                </Link>
+            </p>
+            <p className="text-xs text-textSecondary pt-2 border-t">
+                First time on this device? You must use the "Sign up" option again with your original credentials and Supabase details to sync your account.
+            </p>
+         </div>
       </div>
     </div>
   );

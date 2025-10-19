@@ -1,3 +1,4 @@
+
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
@@ -43,6 +44,9 @@ const SignupPage: React.FC = () => {
         <div className="text-center">
             <h1 className="text-3xl font-bold text-primary">Create Your Account</h1>
             <p className="text-textSecondary mt-2">Connect to your own database for full control.</p>
+            <p className="text-xs text-textSecondary mt-1">
+                To use another device, you'll need to sign up there as well using the same information.
+            </p>
         </div>
 
         <div className="bg-primary-light border-l-4 border-primary text-primary-dark p-4 rounded-md">
